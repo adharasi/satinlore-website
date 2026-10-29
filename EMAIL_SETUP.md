@@ -60,6 +60,8 @@ After the domain, database, Access login and secrets are configured, change `EMA
 
 ## Verify before marketing
 
+If **Check email setup** fails, the owner-only response shows a fixed diagnostic without raw AWS errors or credential values. An access-denied message means the app IAM user needs the policy above, including `ses:GetAccount` and `ses:GetEmailIdentity`, not just sending access. A credentials-rejected message means the two runtime secrets must come from the same active IAM API key; SES SMTP credentials do not work with this API client. A timeout message calls for a later retry. Unknown failures remain generic. Do not paste credentials or private email links into support messages.
+
 1. Visit `/admin` through the Access-protected hostname and sign in using the configured `ADMIN_EMAIL`.
 2. Click **Check email setup**. The result must be `Email checks passed. The sender is ready.` This checks SES access, sending status, production approval and sender verification, not inbox delivery.
 3. Submit a new signup using an inbox you own. Check first name/email are saved, a verification email arrives and a founder alert reaches the team inbox.
