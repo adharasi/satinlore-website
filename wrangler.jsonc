@@ -8,6 +8,12 @@
   ],
   "workers_dev": true,
   "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "launch.satinlore.com",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "enabled": false
   },
@@ -20,7 +26,7 @@
     }
   ],
   "vars": {
-    "PUBLIC_SITE_ORIGIN": "https://satinlore.com",
+    "PUBLIC_SITE_ORIGIN": "https://launch.satinlore.com",
     "SES_REGION": "eu-north-1",
     "SES_FROM_EMAIL": "Satinlore <team@satinlore.com>",
     "FOUNDER_NOTIFICATION_EMAIL": "team@satinlore.com",
