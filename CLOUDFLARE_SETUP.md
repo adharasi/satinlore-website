@@ -4,6 +4,8 @@ This guide sets up the website in your own Cloudflare account. Your domain stays
 
 Preparing the repository is not a live deployment. The original hosted website and its database are separate and are not changed by these instructions.
 
+Setup progress (29 October 2026): the independent Worker and new D1 schema are deployed for testing at `https://launch.satinlore.com`. Runtime secret names have been checked, and `EMAIL_ENABLED` is now `true` for controlled tests; `WELCOME_EMAIL_ENABLED` remains `false`. The apex is not attached to this Worker. Signed-in Access, SES readiness, inbox delivery, the full signup/withdrawal flow, and the final domain cutover remain to be verified. Do not begin marketing yet. The GitHub build command `pnpm run build` is equivalent to `pnpm build`.
+
 ## 1. Prepare the project
 
 1. Sign in to the Cloudflare account that will own SatinLore's website and database.

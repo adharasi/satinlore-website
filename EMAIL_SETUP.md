@@ -1,6 +1,6 @@
 # SatinLore email setup
 
-Use the complete deployment steps in [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md) first. This repository targets your own Cloudflare Workers account. Its defaults keep sending off until you configure and test it.
+Use the complete deployment steps in [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md) first. This repository targets your own Cloudflare Workers account. The current deployment enables confirmation and founder-alert emails for controlled tests at `https://launch.satinlore.com`; actual SES readiness and inbox delivery still need verification. The reader welcome email remains off. Local development examples keep all sending off.
 
 ## Confirm the SES account
 
