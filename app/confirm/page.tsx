@@ -1,0 +1,20 @@
+"use client";
+import {useEffect,useState,type FormEvent} from "react";
+import PageFrame from "@/lib/PageFrame";
+export default function Confirm() {
+  const[token,setToken]=useState("");const[state,setState]=useState("start");const[error,setError]=useState("");const[manageToken,setManageToken]=useState("");
+  const[model,setModel]=useState("");const[phone,setPhone]=useState("");const[interest,setInterest]=useState("");const[profileSaved,setProfileSaved]=useState(false);
+  useEffect(()=>{function readLink(){const t=window.location.hash.slice(1);setToken(t);setManageToken("");setProfileSaved(false);setError("");setState(/^[a-f0-9]{64}$/.test(t)?"start":"invalid");}readLink();window.addEventListener("hashchange",readLink);return()=>window.removeEventListener("hashchange",readLink);},[]);
+  async function confirm(){setState("busy");setError("");try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});const d=await r.json() as {error?:string;manageToken?:string;alreadyConfirmed?:boolean};if(!r.ok)throw new Error(d.error);setManageToken(d.manageToken||"");setState(d.alreadyConfirmed?"already":"done");history.replaceState(null,"","/confirm");}catch(e){setError(e instanceof Error?e.message:"Please try again.");setState("start");}}
+  async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();setError("");try{const r=await fetch("/api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:manageToken,model,phone,interest})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);setProfileSaved(true);}catch(e){setError(e instanceof Error?e.message:"Please try again.");}}
+  const done=state==="done"||state==="already";
+  return <PageFrame title={done?"You’re on the list.":"One last step."}>
+    {done?<><p>Thanks for joining Satinlore. We’ll let you know when it’s time to try a new way to feel your stories.</p>{manageToken&&<><p><a className="button" href={`/manage#${manageToken}`}>Your email choices ↗</a></p><p>Save this link. You can use it to leave the list at any time.</p>
+    {!profileSaved?<form onSubmit={save} style={{display:"grid",gap:18,marginTop:40}}><h2>A little about your setup</h2><p>These questions are your choice. They help us plan what to build.</p>
+      <label className="field">Which toy do you use?<input type="text" value={model} onChange={e=>setModel(e.target.value)} maxLength={120} placeholder="Brand and name, or ‘none yet’" /><small>Any brand is welcome. You can leave this blank.</small></label>
+      <label className="field">Which phone do you use?<select value={phone} onChange={e=>setPhone(e.target.value)}><option value="">Choose one</option><option value="iPhone">iPhone</option><option value="Android">Android</option><option value="Other">A different phone</option></select></label>
+      <label className="field">What would you like to hear about?<select value={interest} onChange={e=>setInterest(e.target.value)}><option value="">Choose one</option><option value="freebeta">A chance to try it early</option><option value="paidlater">Plans and prices when it’s ready</option><option value="updates">News about the launch</option></select></label><button className="button">Save my choices</button>
+    </form>:<p role="status">Your choices are saved. Thank you.</p>}</>}{state==="already"&&<p>Your email was checked before. Use your saved email choices link to make changes. If you need help, <a href="/contact">get in touch</a>.</p>}</>:state==="invalid"?<p>This link is missing or out of date. <a href="/#early-access">Join the list again</a> to get a new email.</p>:<><p>Tap below to check your email and save your spot on the Satinlore list.</p><button className="button" disabled={!token||state==="busy"} onClick={confirm}>{state==="busy"?"Saving your spot…":"Confirm my email"}</button><p>If you did not ask to join, you can close this page.</p></>}
+    {error&&<p role="alert" className="form-error">{error}</p>}
+  </PageFrame>;
+}

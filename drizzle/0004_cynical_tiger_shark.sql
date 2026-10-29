@@ -1,0 +1,1 @@
+ALTER TABLE `waitlist` ADD `founder_alert_attempt_at` integer;

@@ -1,0 +1,8 @@
+# Local only. Copy to .dev.vars (ignored by Git). Never commit real keys.
+ABUSE_SALT=replace-with-a-long-random-value
+# Leave sending off while developing. Production vars live in wrangler.jsonc.
+EMAIL_ENABLED=false
+WELCOME_EMAIL_ENABLED=false
+# Add IAM credentials only when testing SES deliberately.
+SES_ACCESS_KEY_ID=
+SES_SECRET_ACCESS_KEY=

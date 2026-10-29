@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "satinlore-website",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "satinlore-waitlist",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "PUBLIC_SITE_ORIGIN": "https://satinlore.com",
+    "SES_REGION": "eu-north-1",
+    "SES_FROM_EMAIL": "Satinlore <team@satinlore.com>",
+    "FOUNDER_NOTIFICATION_EMAIL": "team@satinlore.com",
+    "EMAIL_ENABLED": "false",
+    "WELCOME_EMAIL_ENABLED": "false",
+    "ADMIN_EMAIL": "",
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": ""
+  }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `waitlist` ADD `previous_token_hash` text;
