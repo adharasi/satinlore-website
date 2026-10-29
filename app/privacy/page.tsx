@@ -3,7 +3,7 @@ import { CONSENT_TEXT, NEWSLETTER_TEXT, CONSENT_VERSION } from "@/lib/waitlist-v
 export default function Privacy() {
  return <PageFrame title="Your details. Your choice.">
   <p><strong>Privacy note · 28 October 2026</strong></p>
-  <p>Hammad Mazhar runs Satinlore in the UK. Use our <a href="/contact">contact form</a> if you need help with your data. This site is for adults aged 18 and over.</p>
+
   <h2>What we ask for</h2>
   <p>We ask for your first name and email. You must say that you are 18 or over. We also keep a record of the words you agreed to and the date you joined.</p>
   <p>You may choose to tell us which toy and phone you own. We may also ask what news you want to hear. You can skip these questions.</p>

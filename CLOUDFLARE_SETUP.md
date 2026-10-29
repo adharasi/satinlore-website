@@ -4,7 +4,7 @@ This guide sets up the website in your own Cloudflare account. Your domain stays
 
 Preparing the repository is not a live deployment. The original hosted website and its database are separate and are not changed by these instructions.
 
-Setup progress (29 October 2026): the independent Worker and new D1 schema are deployed for testing at `https://launch.satinlore.com`. Runtime secret names have been checked, and `EMAIL_ENABLED` is now `true` for controlled tests; `WELCOME_EMAIL_ENABLED` remains `false`. The apex is not attached to this Worker. Signed-in Access, SES readiness, inbox delivery, the full signup/withdrawal flow, and the final domain cutover remain to be verified. Do not begin marketing yet. The GitHub build command `pnpm run build` is equivalent to `pnpm build`.
+Setup progress (29 October 2026): the independent Worker and new D1 schema are deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for test links. The owner confirmed the full staging flow: Access login, SES readiness, inbox delivery, confirmation, optional answers, CRM edits/export, no welcome email, and withdrawal/deletion. `PUBLIC_SITE_ORIGIN` is now `https://satinlore.com`, `EMAIL_ENABLED` is `true`, and `WELCOME_EMAIL_ENABLED` remains `false`. Live public pages and Access redirects on the final domain have been checked. The final-domain signup test and `www` redirect are still pending; disable `workers_dev` after the final test passes. Do not begin marketing yet. The old hosted deployment remains available. The GitHub build command `pnpm run build` is equivalent to `pnpm build`.
 
 ## 1. Prepare the project
 
