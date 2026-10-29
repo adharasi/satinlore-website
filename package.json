@@ -9,7 +9,7 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "dev": "vinext dev --port 5173",
-    "build": "vinext build",
+    "build": "vinext build && node scripts/check-email-build.mjs",
     "start": "node scripts/preview.mjs",
     "deploy": "node scripts/check-deploy.mjs && wrangler deploy --config dist/server/wrangler.json",
     "test": "node --experimental-strip-types --test tests/*.test.ts",

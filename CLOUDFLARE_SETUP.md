@@ -74,6 +74,8 @@ pnpm deploy
 
 This publishes the Worker into your own account. It does not connect the domain or configure Access. The initial configuration enables a temporary `workers.dev` hostname for public-page testing; its admin routes still deny access until Access is correctly configured. Version preview URLs are disabled. The deploy script checks that the placeholder D1 database ID has been replaced. Run `pnpm build` before each `pnpm deploy`, because deployment uploads the built output.
 
+The build also checks the built email-status endpoint in the local Workers runtime using only synthetic credentials and mocked AWS responses. It verifies SDK compatibility, not real SES access or inbox delivery.
+
 Do not begin marketing until the remaining steps and the final signup test pass.
 
 ## 4. Configure runtime values and enter secrets privately

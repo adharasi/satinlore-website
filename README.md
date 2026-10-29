@@ -46,6 +46,8 @@ pnpm typecheck
 pnpm build
 ```
 
+`pnpm build` also checks the built email-status endpoint inside the local Workers runtime. It uses a synthetic signed identity and mocked SES responses, with no production database, credentials or email sends. This catches SDK bundling failures; it does not prove real AWS access or inbox delivery.
+
 `pnpm start` previews the built Worker locally. `pnpm deploy` publishes to the Cloudflare account authenticated in Wrangler, so read the setup guide before running it. Database migrations are a separate step; deploying code does not migrate or copy customer data.
 
 ## Configuration
