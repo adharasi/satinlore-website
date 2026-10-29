@@ -20,6 +20,8 @@ pnpm exec wrangler login
 
 The last command opens Cloudflare's browser sign-in. Complete that yourself; no Cloudflare password or API token belongs in chat.
 
+If `corepack` is not available (including Node.js 25 and newer), use `npm install --global pnpm@11.25.0` instead of the two Corepack commands. If `pnpm --version` already reports `11.25.0`, skip package-manager installation. Verify your Cloudflare account email before deploying Workers; signing in alone does not verify it.
+
 The repository is public. Do not upload real CRM records, backups or secret files to it. GitHub's source visibility does not make the deployed CRM public: access is enforced separately by the app and Cloudflare Access.
 
 ## 2. Create the new D1 database

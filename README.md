@@ -36,6 +36,8 @@ pnpm dev
 
 Use the loopback URL printed by the development server. Local D1 state is separate from the Cloudflare production database. Admin routes require valid Cloudflare Access authentication; a local development page is not evidence of production authentication or SES delivery.
 
+If Node.js does not include `corepack`, use `npm install --global pnpm@11.25.0` instead of the two Corepack commands. Skip that installation if `pnpm --version` already reports `11.25.0`.
+
 ## Checks and builds
 
 ```sh

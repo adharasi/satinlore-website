@@ -15,7 +15,7 @@
     {
       "binding": "DB",
       "database_name": "satinlore-waitlist",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "9bfa0082-f4bb-4625-97f0-254f0e469b83",
       "migrations_dir": "drizzle"
     }
   ],
@@ -26,8 +26,8 @@
     "FOUNDER_NOTIFICATION_EMAIL": "team@satinlore.com",
     "EMAIL_ENABLED": "false",
     "WELCOME_EMAIL_ENABLED": "false",
-    "ADMIN_EMAIL": "",
-    "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": ""
+    "ADMIN_EMAIL": "team@satinlore.com",
+    "ACCESS_TEAM_DOMAIN": "satinlore.cloudflareaccess.com",
+    "ACCESS_AUD": "1ea771adcb502a7ad2e7ed04f5074058d918ee1cef26853fc70be91483ba9346"
   }
 }
