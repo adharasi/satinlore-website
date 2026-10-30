@@ -7,6 +7,8 @@ The repository is currently **public**. Source code belongs here; customer recor
 ## What is included
 
 - Responsive launch page with first-name and email signup, adult confirmation and consent.
+- Fluid desktop width, readable text sizing and mobile/tablet layouts that reflow without page zoom.
+- Current website privacy notice at `/privacy` and an unlisted, no-index research notice at `/research-privacy` for questionnaire links. Published wording comes from the owner's Google Drive notices; the research page is intentionally absent from the footer and navigation.
 - Inbox confirmation, optional device questionnaire, email choices and withdrawal links.
 - Private founder CRM with search, stages, notes and CSV exports.
 - SES confirmation emails and founder alerts to `team@satinlore.com`.
