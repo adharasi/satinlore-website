@@ -17,7 +17,7 @@ The reader welcome email stays off by default. There is no newsletter campaign s
 
 ## Deployment status
 
-The independent Worker is deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for existing test links. Its new D1 database has all six tracked migrations applied. The owner completed the full staging test, including Access login, SES readiness, real inbox delivery, confirmation, CRM edits/export and withdrawal. Confirmation and founder-alert sending is enabled; the reader welcome email stays off. The final-domain signup test and `www` redirect are still pending. The temporary `workers.dev` hostname remains enabled until that test passes; version previews stay disabled. The previous hosted deployment has not been deleted.
+The independent Worker is deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for existing test links. Its new D1 database has all six tracked migrations applied. The owner completed the full staging and final-domain tests, including Access login, SES readiness, real inbox delivery, confirmation, CRM edits/export and withdrawal. Confirmation and founder-alert sending is enabled; the reader welcome email stays off. `www` redirects to the apex with a 301 and preserves paths and query strings. The temporary `workers.dev` hostname and version previews are disabled. The previous hosted deployment has not been deleted.
 
 Start with [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md) for the complete setup and launch checklist. [EMAIL_SETUP.md](EMAIL_SETUP.md) covers SES and the email flow.
 
