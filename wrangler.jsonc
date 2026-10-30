@@ -8,6 +8,7 @@
   ],
   "workers_dev": false,
   "preview_urls": false,
+  "triggers": { "crons": ["* * * * *"] },
   "routes": [
     {
       "pattern": "satinlore.com",
@@ -36,6 +37,7 @@
     "FOUNDER_NOTIFICATION_EMAIL": "team@satinlore.com",
     "EMAIL_ENABLED": "true",
     "WELCOME_EMAIL_ENABLED": "false",
+    "SURVEY_EMAIL_ENABLED": "true",
     "ADMIN_EMAIL": "team@satinlore.com",
     "ACCESS_TEAM_DOMAIN": "satinlore.cloudflareaccess.com",
     "ACCESS_AUD": "1ea771adcb502a7ad2e7ed04f5074058d918ee1cef26853fc70be91483ba9346"

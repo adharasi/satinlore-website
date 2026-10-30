@@ -10,16 +10,18 @@ The repository is currently **public**. Source code belongs here; customer recor
 - Fluid desktop width, readable text sizing and mobile/tablet layouts that reflow without page zoom.
 - Current website privacy notice at `/privacy` and an unlisted, no-index research notice at `/research-privacy` for questionnaire links. Published wording comes from the owner's Google Drive notices; the research page is intentionally absent from the footer and navigation.
 - Inbox confirmation, optional device questionnaire, email choices and withdrawal links.
-- Private founder CRM with search, stages, notes and CSV exports.
+- Private founder CRM with search, stages, notes and waitlist CSV exports. Questionnaire and waitlist entries share one contact when their trimmed, lower-case email addresses match.
+- Signed Google Forms bridge for the final questionnaire, with separate research, test-contact, draw and news choices. See [the bridge setup](integrations/google-forms/SETUP.md).
 - SES confirmation emails and founder alerts to `team@satinlore.com`.
-- Cloudflare D1 schema and its six existing migrations.
+- Approved branded survey invitation queued five minutes after a new email verification; a once-a-minute Worker trigger processes the queue.
+- Cloudflare D1 schema with append-only, tracked migrations, including `0006` for survey responses and delayed invitations.
 - Cloudflare Access authentication for the founder dashboard and admin APIs.
 
-The reader welcome email stays off by default. There is no newsletter campaign sender, automatic Google Sheets sync, automatic SES bounce ingestion or scheduled alert retry in this version.
+The old immediate reader welcome email stays off. The approved delayed survey invitation has its own `SURVEY_EMAIL_ENABLED` switch. It does not send to people already verified before the new migration. There is no general newsletter sender, automatic Google Sheets sync, automatic SES bounce ingestion or scheduled founder-alert retry. Google Forms syncing needs its private shared secret and authorised form-bound triggers before it can run.
 
 ## Deployment status
 
-The independent Worker is deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for existing test links. Its new D1 database has all six tracked migrations applied. The owner completed the full staging and final-domain tests, including Access login, SES readiness, real inbox delivery, confirmation, CRM edits/export and withdrawal. Confirmation and founder-alert sending is enabled; the reader welcome email stays off. `www` redirects to the apex with a 301 and preserves paths and query strings. The temporary `workers.dev` hostname and version previews are disabled. The previous hosted deployment has not been deleted.
+The independent Worker is deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for existing test links. The original six D1 migrations were applied during that launch. The survey extension adds migration `0006`; its deployment and Google authorisation must be verified separately. The owner completed the full staging and final-domain tests, including Access login, SES readiness, real inbox delivery, confirmation, CRM edits/export and withdrawal. Confirmation and founder-alert sending is enabled; the old immediate reader welcome email stays off. `www` redirects to the apex with a 301 and preserves paths and query strings. The temporary `workers.dev` hostname and version previews are disabled. The previous hosted deployment has not been deleted.
 
 Start with [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md) for the complete setup and launch checklist. [EMAIL_SETUP.md](EMAIL_SETUP.md) covers SES and the email flow.
 
@@ -50,7 +52,7 @@ pnpm build
 
 `pnpm build` also checks the built email-status endpoint inside the local Workers runtime. It uses a synthetic signed identity and mocked SES responses, with no production database, credentials or email sends. This catches SDK bundling failures; it does not prove real AWS access or inbox delivery.
 
-`pnpm start` previews the built Worker locally. `pnpm deploy` publishes to the Cloudflare account authenticated in Wrangler, so read the setup guide before running it. Database migrations are a separate step; deploying code does not migrate or copy customer data.
+`pnpm start` previews the built Worker locally. `pnpm deploy` applies unapplied D1 migrations and then publishes the built Worker to the Cloudflare account authenticated in Wrangler. Read the setup guide first. The deployment token needs D1 write permissions as well as Worker deployment permissions. A failed migration stops publication; this never copies customer data from another database. Database changes remain after a code rollback.
 
 ## Configuration
 

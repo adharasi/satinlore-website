@@ -4,7 +4,7 @@ This guide sets up the website in your own Cloudflare account. Your domain stays
 
 Preparing the repository is not a live deployment. The original hosted website and its database are separate and are not changed by these instructions.
 
-Setup complete (30 October 2026): the independent Worker and new D1 schema are deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for existing test links. The owner confirmed the full staging and final-domain flows: Access login, SES readiness, real inbox delivery, confirmation, optional answers, CRM edits/export, no welcome email, and withdrawal/deletion. `PUBLIC_SITE_ORIGIN=https://satinlore.com`, `EMAIL_ENABLED=true`, and `WELCOME_EMAIL_ENABLED=false`. The `www` 301 redirect preserves paths and query strings. `workers_dev` and version previews are disabled. The old hosted deployment remains available. Cloudflare Builds is connected to the repository; `pnpm run build` is equivalent to `pnpm build`. Continue the after-launch monitoring and private backup work below.
+Setup complete (30 October 2026): the independent Worker and new D1 schema are deployed at `https://satinlore.com`, with `https://launch.satinlore.com` retained for existing test links. The owner confirmed the full staging and final-domain flows: Access login, SES readiness, real inbox delivery, confirmation, optional answers, CRM edits/export, no welcome email, and withdrawal/deletion. `PUBLIC_SITE_ORIGIN=https://satinlore.com`, `EMAIL_ENABLED=true`, and `WELCOME_EMAIL_ENABLED=false`. The `www` 301 redirect preserves paths and query strings. `workers_dev` and version previews are disabled. The old hosted deployment remains available. Cloudflare Builds is connected to the repository; `pnpm run build` is equivalent to `pnpm build`. Continue the after-launch monitoring and private backup work below. The later survey extension adds tracked migration `0006`, a one-minute email trigger and a separately authorised Google Forms bridge; do not treat the original launch checks as validation of those additions.
 
 ## 1. Prepare the project
 
@@ -63,7 +63,7 @@ Do not run the old SQL files individually against an already-migrated database. 
 
 ## 3. Build and create the Worker
 
-Keep `EMAIL_ENABLED` and `WELCOME_EMAIL_ENABLED` set to `false` initially. Run:
+Keep `EMAIL_ENABLED`, `WELCOME_EMAIL_ENABLED` and `SURVEY_EMAIL_ENABLED` set to `false` for a new installation until testing. Run:
 
 ```sh
 pnpm test
@@ -72,7 +72,7 @@ pnpm build
 pnpm deploy
 ```
 
-This publishes the Worker into your own account. It does not connect the domain or configure Access. The initial configuration enables a temporary `workers.dev` hostname for public-page testing; its admin routes still deny access until Access is correctly configured. Version preview URLs are disabled. The deploy script checks that the placeholder D1 database ID has been replaced. Run `pnpm build` before each `pnpm deploy`, because deployment uploads the built output.
+This applies unapplied tracked D1 migrations, then publishes the Worker into your own account. It does not connect the domain or configure Access. The source keeps `workers.dev` and version previews disabled; deliberately configure an isolated test hostname if needed. The deploy script checks the D1 database ID, and a failed migration stops publication. Run `pnpm build` before each `pnpm deploy`, because deployment uploads the built output. The authenticated account or build API token needs D1 write permissions and Worker deployment permissions. A code rollback does not reverse a schema migration.
 
 The build also checks the built email-status endpoint in the local Workers runtime using only synthetic credentials and mocked AWS responses. It verifies SDK compatibility, not real SES access or inbox delivery.
 
@@ -89,6 +89,7 @@ Use **Add → Secret** for these values:
 | `SES_ACCESS_KEY_ID` | The dedicated AWS IAM access key ID |
 | `SES_SECRET_ACCESS_KEY` | Its matching AWS secret access key |
 | `ABUSE_SALT` | A new long random value generated in your password manager, at least 32 random bytes |
+| `QUESTIONNAIRE_WEBHOOK_SECRET` | A separate private random value of at least 32 characters, shared only with the form-bound Apps Script properties |
 
 **Keep non-secret runtime values in the `vars` section of `wrangler.jsonc`.** Edit that file, then commit it to GitHub. The following names and values are safe configuration, not passwords:
 
@@ -99,7 +100,8 @@ Use **Add → Secret** for these values:
 | `FOUNDER_NOTIFICATION_EMAIL` | `team@satinlore.com` |
 | `PUBLIC_SITE_ORIGIN` | `https://satinlore.com` for the final launch |
 | `EMAIL_ENABLED` | `false` until you are ready for the email test |
-| `WELCOME_EMAIL_ENABLED` | `false` |
+| `WELCOME_EMAIL_ENABLED` | `false` for the old immediate welcome email |
+| `SURVEY_EMAIL_ENABLED` | `false` during initial setup; `true` for the approved five-minute invitation after deployment checks |
 | `ADMIN_EMAIL` | The single email address you will use to sign in to the founder dashboard |
 | `ACCESS_TEAM_DOMAIN` | Your Access team hostname, such as `your-team.cloudflareaccess.com`, without `https://` or a trailing slash |
 | `ACCESS_AUD` | The Application Audience (AUD) tag from the Access application in step 5 |
@@ -128,7 +130,7 @@ If the dashboard requires separate entries for `/admin` and `/admin/*`, add both
 
 The public launch page, confirmation and email-choice links must remain available without founder login. Protect only the founder page and admin API paths.
 
-The app independently validates Access's signed JWT, configured issuer, audience, expiry and founder email. Missing settings or invalid identity must deny access. Merely adding an email header is not authentication. The temporary `workers.dev` hostname starts enabled, with the same application-level JWT checks on every admin request. It can show the public page without Access while its admin page remains unavailable. To test the admin there, protect that hostname with Access and configure its origin deliberately; do not bypass authentication. After the final custom-domain test, set `workers_dev` to `false` in `wrangler.jsonc`, rebuild and deploy. Keep version preview URLs disabled unless separately isolated and protected. A direct alternative hostname must never expose the CRM.
+The app independently validates Access's signed JWT, configured issuer, audience, expiry and founder email. Missing settings or invalid identity must deny access. Merely adding an email header is not authentication. The source keeps `workers_dev=false` and version previews disabled. Use an explicitly protected test hostname when needed; do not enable an alternative admin path or bypass authentication. Any future preview must be separately isolated from production data and email. A direct alternative hostname must never expose the CRM.
 
 ## 6. Plan the domain and database cutover
 
@@ -178,12 +180,12 @@ A useful rollout is to test first on a dedicated hostname such as `launch.satinl
 6. Submit your own inbox, name and consent. Confirm both the verification email and the founder alert actually arrive, checking spam as well.
 7. Open the verification link and press **Confirm my email**. Merely opening the page must not verify it.
 8. In the CRM, confirm the checked state, optional answers, stage/notes edits and CSV export.
-9. Confirm no separate reader welcome email arrives.
-10. Use the original email's choices/leave link after confirmation. Test changing choices and leaving; verify the test record and CRM notes are removed.
+9. Confirm no immediate reader welcome email arrives. With the survey invitation enabled, check its branded email arrives only after five minutes, normally on the next one-minute cron tick. Test the survey button and private choices link. Existing verified contacts must not be backfilled.
+10. Use the original email's choices/leave link after confirmation. Test changing choices and leaving; verify the waitlist records and queued invitations are removed. CRM notes remain if the email also has a separate questionnaire record; research and draw withdrawals are separate requests.
 11. Check a logged-out browser cannot open the dashboard or export/API endpoints. Repeat against every reachable alternative hostname.
 12. Repeat the full signup on the final `https://satinlore.com` domain and verify email links point to it.
 
-Only after this test should you process old queued entries with **Send checks to five waiting readers** or **Send five queued founder alerts**. Inspect failures and repeat batches deliberately; no unattended retry schedule is installed. Review SES bounce/complaint alerts and mark affected CRM records Blocked. SES acceptance is not proof of inbox delivery.
+Only after this test should you process old queued entries with **Send checks to five waiting readers** or **Send five queued founder alerts**. Inspect founder-alert failures and repeat batches deliberately; founder alerts have no unattended retry schedule. The separate survey invitation queue does have scheduled bounded retries. Review SES bounce/complaint alerts and mark affected CRM records Blocked. SES acceptance is not proof of inbox delivery.
 
 ## 9. Connect automatic GitHub deployments
 
@@ -202,12 +204,13 @@ Use:
 
 The Worker name in Cloudflare must match the name in `wrangler.jsonc`. Disable automatic non-production branch/preview builds initially. Do not let a preview use the production D1 database or send real emails; provision separate bindings and credentials before enabling preview environments.
 
-Push the real D1 database ID and non-secret deployment settings to the repository. Keep `workers_dev=false` after the custom-domain handoff and `preview_urls=false` unless deliberately enabling a separate safe environment. Do not commit runtime secrets. D1 schema changes are a separate reviewed migration step; avoid applying production migrations from every arbitrary branch.
+Push the real D1 database ID and non-secret deployment settings to the repository. Keep `workers_dev=false` after the custom-domain handoff and `preview_urls=false` unless deliberately enabling a separate safe environment. Do not commit runtime secrets. The `pnpm deploy` script applies only unapplied tracked migrations before publishing the Worker. Its build token must have D1 write access. Review migration changes before merging to `main`; keep arbitrary branch builds disabled so they cannot migrate production. Never replace this with replaying old SQL files individually.
 
 ## After launch
 
 - Keep the old deployment available until the data and link transition has been checked.
-- Use the new `/admin` as the primary CRM. Google Sheets remains an optional private CSV snapshot, with no live two-way sync.
+- Use `/admin` as the primary CRM. Follow [Google Forms bridge setup](integrations/google-forms/SETUP.md) to record questionnaire responses and merge matching emails. Google Sheets remains an optional private CSV snapshot, with no live two-way sync.
+- Verify the one-minute cron appears under Worker triggers and check a new inbox verification receives the invitation after five minutes. Keep the old immediate welcome flow disabled.
 - Verify runtime defaults before every release. Re-run relevant tests and a real signup after changes to auth, email, forms or domains.
 - Keep feedback alerts under review and remove withdrawn readers from any exported working copies.
 - Back up retained data privately and test a restore process. A code rollback does not roll back a database migration or recover deleted records.

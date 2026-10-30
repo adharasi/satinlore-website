@@ -14,6 +14,9 @@ function compile(path: string) {
 }
 const confirmSource = compile("../app/api/confirm/route.ts");
 const manageSource = compile("../app/api/manage/route.ts");
+const suppressionSource = compile("../lib/email-suppression.ts");
+const suppression:Record<string,unknown> = {};
+new Function("exports",suppressionSource)(suppression);
 const validationSource = compile("../lib/waitlist-validation.ts");
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const initialToken = "b".repeat(64);
@@ -31,7 +34,7 @@ function fixture() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`CREATE TABLE waitlist (
     id TEXT PRIMARY KEY, email TEXT NOT NULL, first_name TEXT,
-    token_hash TEXT NOT NULL, previous_token_hash TEXT,
+    token_hash TEXT NOT NULL, previous_token_hash TEXT, survey_token_hash TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
     confirmation_hash TEXT, confirmation_expires_at INTEGER,
     confirmed_at INTEGER, expires_at INTEGER NOT NULL,
@@ -39,7 +42,10 @@ function fixture() {
     newsletter INTEGER NOT NULL DEFAULT 1, newsletter_consent_at INTEGER,
     model TEXT, phone TEXT, interest TEXT
   );
-  CREATE TABLE crm_contacts (email TEXT PRIMARY KEY, stage TEXT NOT NULL, notes TEXT);`);
+  CREATE TABLE crm_contacts (email TEXT PRIMARY KEY, stage TEXT NOT NULL, notes TEXT);
+  CREATE TABLE email_suppressions(email_hash TEXT,purpose TEXT,suppressed_at INTEGER,PRIMARY KEY(email_hash,purpose));
+  CREATE TABLE survey_email_jobs (email TEXT PRIMARY KEY);
+  CREATE TABLE questionnaire_responses (email TEXT PRIMARY KEY);`);
   const now = 100_000_000;
   let tokenCalls = 0;
   let welcomeCalls = 0;
@@ -67,6 +73,7 @@ function fixture() {
   new Function("exports", validationSource)(validation);
   const server = {
     database: () => db,
+    runtime: () => ({ABUSE_SALT:"synthetic-verification-test-abuse-salt"}),
     hash: async (value: string) => digest(value),
     newToken: () => { tokenCalls++; return rotatedToken; },
     cleanExpired: async () => {
@@ -82,6 +89,7 @@ function fixture() {
   };
   const restrictedRequire = (specifier: string) => {
     if (specifier === "@/lib/waitlist-validation") return validation;
+    if (specifier === "@/lib/email-suppression") return suppression;
     if (specifier === "@/lib/waitlist-server") return server;
     if (specifier === "@/lib/email-settings") return { emailSettings: () => ({ enabled: true, welcomeEnabled: false }) };
     if (specifier === "@/lib/email-sender") return {
@@ -206,4 +214,32 @@ test("expired confirmation links cannot verify a reader", async t => {
   assert.equal(f.row()?.previous_token_hash, null);
   assert.equal(f.tokenCalls, 0);
   assert.equal(f.welcomeCalls, 0);
+});
+
+test("survey private link can opt out and leave without deleting a separate survey or draw record", async t => {
+  const f = fixture(); t.after(f.close); f.add("reader", "reader@example.test", initialToken, true);
+  const surveyToken="e".repeat(64);
+  f.sqlite.prepare("UPDATE waitlist SET survey_token_hash=? WHERE id='reader'").run(digest(surveyToken));
+  f.sqlite.prepare("INSERT INTO questionnaire_responses(email) VALUES (?)").run("reader@example.test");
+  f.sqlite.prepare("INSERT INTO survey_email_jobs(email) VALUES (?)").run("reader@example.test");
+  f.sqlite.prepare("INSERT INTO crm_contacts(email,stage,notes) VALUES (?,?,?)").run("reader@example.test","new","Keep draw contact admin");
+  assert.equal((await f.manage(surveyToken,"get")).status,200);
+  assert.equal((await f.manage(surveyToken,"newsletter",{newsletter:false})).status,200);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) n FROM email_suppressions").get()?.n,1);
+  assert.equal((await f.manage(surveyToken,"delete")).status,200);
+  assert.equal(f.row(),undefined);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) n FROM survey_email_jobs").get()?.n,0);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) n FROM questionnaire_responses").get()?.n,1);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) n FROM crm_contacts").get()?.n,1);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) n FROM email_suppressions").get()?.n,1);
+});
+
+test("a survey-token hash on an unchecked row grants no access and cannot clear a marketing opt-out", async t => {
+  const f = fixture(); t.after(f.close); f.add();
+  const token="e".repeat(64);
+  f.sqlite.prepare("UPDATE waitlist SET survey_token_hash=? WHERE id='reader'").run(digest(token));
+  f.sqlite.prepare("INSERT INTO email_suppressions VALUES (?,?,?)").run("synthetic-optout","marketing",f.now);
+  assert.equal((await f.manage(token,"get")).status,404);
+  assert.equal((await f.manage(token,"newsletter",{newsletter:true})).status,404);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) n FROM email_suppressions").get()?.n,1);
 });

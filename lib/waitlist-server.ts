@@ -1,8 +1,9 @@
+import { purgeExpiredRecords } from "@/lib/data-retention";
 import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
 import { verifyAdminRequest } from "@/lib/admin-auth";
 
-type AppEnv = { PUBLIC_SITE_ORIGIN?: string; DB?: D1Database; ADMIN_EMAIL?: string; ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string; ABUSE_SALT?: string; SES_ACCESS_KEY_ID?: string; SES_SECRET_ACCESS_KEY?: string; SES_SESSION_TOKEN?: string; SES_REGION?: string; SES_FROM_EMAIL?: string; SES_CONFIGURATION_SET?: string; EMAIL_ENABLED?: string; WELCOME_EMAIL_ENABLED?: string; FOUNDER_NOTIFICATION_EMAIL?: string };
+type AppEnv = { QUESTIONNAIRE_WEBHOOK_SECRET?: string; SURVEY_EMAIL_ENABLED?: string; PUBLIC_SITE_ORIGIN?: string; DB?: D1Database; ADMIN_EMAIL?: string; ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string; ABUSE_SALT?: string; SES_ACCESS_KEY_ID?: string; SES_SECRET_ACCESS_KEY?: string; SES_SESSION_TOKEN?: string; SES_REGION?: string; SES_FROM_EMAIL?: string; SES_CONFIGURATION_SET?: string; EMAIL_ENABLED?: string; WELCOME_EMAIL_ENABLED?: string; FOUNDER_NOTIFICATION_EMAIL?: string };
 export const runtime = () => env as unknown as AppEnv;
 export function database(): D1Database {
   const db = runtime().DB;
@@ -31,14 +32,7 @@ export function newToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
 }
 export async function cleanExpired() {
-  const now = Date.now();
-  const db = database();
-  await db.batch([
-    db.prepare("DELETE FROM waitlist WHERE expires_at <= ?").bind(now),
-    db.prepare("DELETE FROM contact_requests WHERE expires_at <= ?").bind(now),
-    db.prepare("DELETE FROM rate_limits WHERE expires_at <= ?").bind(now),
-    db.prepare("DELETE FROM crm_contacts WHERE NOT EXISTS (SELECT 1 FROM waitlist w WHERE w.email=crm_contacts.email AND w.expires_at > ?)").bind(now),
-  ]);
+  await purgeExpiredRecords(database());
 }
 export async function rateLimit(request: Request) {
   const ABUSE_SALT = runtime().ABUSE_SALT || (import.meta.env.DEV ? "local-preview-not-for-production" : undefined);

@@ -1,6 +1,7 @@
 import { GetAccountCommand, GetEmailIdentityCommand, SendEmailCommand, SESv2Client } from "@aws-sdk/client-sesv2";
 import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 import { buildConfirmationEmail, buildFounderAlertEmail, buildWelcomeEmail, emailPublicOrigin, type EmailContent } from "./email-content";
+import { buildSurveyEmail } from "./survey-email";
 
 export type EmailSettings = {
   enabled: boolean;
@@ -74,6 +75,10 @@ export function sendConfirmation(settings: EmailSettings, input: { email: string
 
 export function sendWelcome(settings: EmailSettings, input: { email: string; firstName: string; manageToken: string }): Promise<string> {
   return send(settings, input.email, buildWelcomeEmail({ publicOrigin: settings.publicOrigin, ...input }));
+}
+
+export function sendSurveyInvitation(settings: EmailSettings, input: { email: string; manageToken: string }): Promise<string> {
+  return send(settings, input.email, buildSurveyEmail({ publicOrigin: settings.publicOrigin, manageToken: input.manageToken }));
 }
 
 export function sendFounderAlert(settings: EmailSettings, input: { firstName:string; email:string; createdAt:number }): Promise<string> {

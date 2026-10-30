@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const waitlist = sqliteTable("waitlist", {
   id: text("id").primaryKey(),
@@ -6,6 +6,7 @@ export const waitlist = sqliteTable("waitlist", {
   firstName: text("first_name"),
   tokenHash: text("token_hash").notNull().unique(),
   previousTokenHash: text("previous_token_hash"),
+  surveyTokenHash: text("survey_token_hash"),
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
   consentVersion: text("consent_version").notNull(),
@@ -45,3 +46,34 @@ export const contactRequests = sqliteTable("contact_requests", {
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
 });
+
+export const surveyEmailJobs = sqliteTable("survey_email_jobs", {
+  email: text("email").primaryKey(),
+  waitlistId: text("waitlist_id").notNull(),
+  dueAt: integer("due_at").notNull(),
+  state: text("state").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  attemptAt: integer("attempt_at"),
+  nextAttemptAt: integer("next_attempt_at").notNull(),
+  sentAt: integer("sent_at"),
+  createdAt: integer("created_at").notNull(),
+});
+export const questionnaireResponses = sqliteTable("questionnaire_responses", {
+  email: text("email").primaryKey(),
+  responseId: text("response_id").notNull().unique(),
+  submittedAt: integer("submitted_at").notNull(),
+  receivedAt: integer("received_at").notNull(),
+  schemaVersion: text("schema_version").notNull(),
+  answersJson: text("answers_json").notNull(),
+  sensitiveConsent: integer("sensitive_consent", {mode:"boolean"}).notNull().default(false),
+  contactConsent: integer("contact_consent", {mode:"boolean"}).notNull().default(false),
+  marketingConsent: integer("marketing_consent", {mode:"boolean"}).notNull().default(false),
+  prizeDraw: integer("prize_draw", {mode:"boolean"}).notNull().default(false),
+  expiresAt: integer("expires_at").notNull(),
+});
+
+export const emailSuppressions = sqliteTable("email_suppressions", {
+  emailHash: text("email_hash").notNull(),
+  purpose: text("purpose").notNull(),
+  suppressedAt: integer("suppressed_at").notNull(),
+}, table => [primaryKey({columns:[table.emailHash,table.purpose]})]);

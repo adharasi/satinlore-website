@@ -11,7 +11,7 @@
     "dev": "vinext dev --port 5173",
     "build": "vinext build && node scripts/check-email-build.mjs",
     "start": "node scripts/preview.mjs",
-    "deploy": "node scripts/check-deploy.mjs && wrangler deploy --config dist/server/wrangler.json",
+    "deploy": "node scripts/check-deploy.mjs && wrangler d1 migrations apply DB --remote --config wrangler.jsonc && wrangler deploy --config dist/server/wrangler.json",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "db:create": "wrangler d1 create satinlore-waitlist",

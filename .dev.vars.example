@@ -3,6 +3,9 @@ ABUSE_SALT=replace-with-a-long-random-value
 # Leave sending off while developing. Production vars live in wrangler.jsonc.
 EMAIL_ENABLED=false
 WELCOME_EMAIL_ENABLED=false
+SURVEY_EMAIL_ENABLED=false
+# Same private value in the form-bound Apps Script properties. Never commit it.
+QUESTIONNAIRE_WEBHOOK_SECRET=
 # Add IAM credentials only when testing SES deliberately.
 SES_ACCESS_KEY_ID=
 SES_SECRET_ACCESS_KEY=

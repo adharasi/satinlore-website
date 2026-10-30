@@ -1,6 +1,8 @@
 declare namespace Cloudflare {
   interface Env {
     DB: D1Database;
+    SURVEY_EMAIL_ENABLED?: string;
+    QUESTIONNAIRE_WEBHOOK_SECRET?: string;
     PUBLIC_SITE_ORIGIN?: string;
     SES_REGION?: string;
     SES_FROM_EMAIL?: string;

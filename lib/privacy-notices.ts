@@ -165,7 +165,7 @@ export const researchPrivacyNotice: PrivacyNoticeData = {
     {
       "heading": "Who can see the information",
       "paragraphs": [
-        "Only authorised team members and service providers who need the information for these tasks may access it. The questionnaire uses Google Forms and a linked Google Sheet. Our email, automation, contact-management and payment services receive only the details needed for their role. We keep sensitive research answers out of general marketing exports and email previews.",
+        "Only authorised team members and service providers who need the information for these tasks may access it. The questionnaire uses Google Forms. We match responses with waitlist records in our private contact system, hosted by Cloudflare. Our email, automation, contact-management and payment services receive only the details needed for their role. We keep sensitive research answers out of general marketing exports and email previews.",
         "We may share limited information when required by law or to handle a legal claim. Any winner information needed to show that a prize was awarded will be handled under the draw rules, including the stated objection route. We will not include toy details or reading preferences in a winner announcement."
       ]
     },

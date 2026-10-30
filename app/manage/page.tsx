@@ -12,7 +12,7 @@ export default function Manage(){
  <p>You can change your choice below. To stop all list emails, choose “Leave the list”.</p>
  <label style={{display:"flex",gap:12}}><input type="checkbox" checked={newsletter} onChange={e=>{setNewsletter(e.target.checked);setState("ready");}} /> Also send me tips and offers from Satinlore.</label>
  <button className="button" disabled={state==="saving"} onClick={update}>Save my choice</button>{state==="saved"&&<p role="status">Your choice is saved.</p>}
- <hr/><p>We’ll remove your details from this list when you leave.</p><button className="button" disabled={state==="saving"} onClick={remove}>Leave the list</button>
+ <hr/><p>We’ll remove your waitlist details and stop news and offers. A survey or prize entry stays separate. For help with those choices, email team@satinlore.com.</p><button className="button" disabled={state==="saving"} onClick={remove}>Leave the list</button>
  </div>}{error&&<p className="form-error" role="alert">{error}</p>}
  </PageFrame>;
 }
