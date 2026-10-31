@@ -278,6 +278,8 @@
 .landing-page .button{transition:none}}
 /* These styles are confined to the landing page; CRM and account pages retain their existing layout. */
 .landing-page{font-size:16px;line-height:1.7;min-width:0}
+.landing-page .hero-copy{text-align:left}
+.landing-page .hero-copy>.eyebrow{justify-content:flex-start}
 .landing-page section[id],.landing-page .legacy-anchor{scroll-margin-top:110px}
 .landing-page .legacy-anchor{display:block;position:relative;top:0}
 .landing-page .signup-section{position:relative}
@@ -299,6 +301,7 @@
 .landing-page .button:disabled{transform:none;opacity:.65;cursor:wait}
 @media(max-width:650px){.landing-page section[id],.landing-page .legacy-anchor{scroll-margin-top:88px}.landing-page .signup-rewards h3{font-size:27px}.landing-page .signup-rewards article>p:not(.reward-label){font-size:15px}.landing-page .signup-rewards article>.reward-note{font-size:12px}.landing-page .signup-inner{gap:32px}}
 @media(min-width:1800px){
+.landing-page .status-line,.landing-page .see-link{font-size:.7vw}.landing-page .play-mark{width:1.55vw;height:1.55vw}.landing-page .steps article>span{font-size:1vw}.landing-page .reading-cues span,.landing-page .control-tags span{font-size:.75vw}.landing-page .opportunity-number{font-size:.75vw}
 .landing-page .header-inner{height:5.375vw}.landing-page .wordmark{font-size:2vw}.landing-page .header nav{font-size:.82vw;gap:1.75vw}.landing-page .header-cta{font-size:.8vw;padding:.85vw 1.1vw;min-height:3vw}
 .landing-page .hero{padding-block:3.5vw 4vw}.landing-page .story-section,.landing-page .beta-inner{padding-block:4.8vw}.landing-page .faq-section{padding-block:5vw}.landing-page .signup-inner{padding-block:4.7vw;gap:6vw}
 .landing-page .story-copy h2,.landing-page .faq-heading h2{font-size:3.7vw}.landing-page .feature-inset h3{font-size:1.94vw}.landing-page .mini-label{font-size:.65vw}.landing-page .steps{padding-block:1.75vw;gap:3.1vw}
