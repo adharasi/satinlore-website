@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Satinlore — Feel the story unfold",
-  description: "Your stories. A new way to feel them. Your toy follows the story as you read. Just read, relax, and enjoy. Join the Satinlore list. Adults 18+.",
+  title: "SatinLore — Read the story. Feel every turn.",
+  description: "An adult reading app that syncs your compatible sex toy with your story and reading pace. Join for paid beta testing or free early access. Adults 18+.",
   metadataBase: new URL("https://satinlore.com"),
-  openGraph: { title: "Satinlore — Feel the story unfold", description: "Your toy follows the story. Just read, relax, and enjoy. Coming soon.", type: "website" },
+  openGraph: { title: "SatinLore — Read the story. Feel every turn.", description: "Upload your story. Feel its changing intensity and rhythms as you read. Join for paid beta testing or free early access. Adults 18+.", type: "website" },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

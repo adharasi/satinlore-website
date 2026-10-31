@@ -1,88 +1,100 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { CONSENT_TEXT, NEWSLETTER_TEXT } from "@/lib/waitlist-validation";
-
-const passages = [
-  { text: "The rain tapped on the glass. She turned a page and let the day slip away.", label: "A soft start", level: 2 },
-  { text: "A voice came from the door. She looked up and smiled. For a beat, neither one spoke.", label: "A small spark", level: 4 },
-  { text: "He held out his hand. She closed her book and took it. The night was theirs, with no need to rush.", label: "A new turn", level: 6 },
-];
-
-function Arrow({ small = false }: { small?: boolean }) {
-  return <svg width={small ? 15 : 19} height={small ? 15 : 19} viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
-function Mark() {
-  return <svg className="brand-mark" width="30" height="34" viewBox="0 0 30 34" fill="none" aria-hidden="true"><path d="M24 3C12 3 5 9 5 16c0 7 10 7 10 12 0 3-4 4-9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M24 3c-2 7-8 11-13 13C4 19 3 25 6 31c13 0 20-7 20-14 0-5-5-6-9-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>;
-}
-
-function ReaderPreview() {
-  const [active, setActive] = useState(1);
-  return <div className="preview-scene">
-    <div className="orbit orbit-one" aria-hidden="true" /><div className="orbit orbit-two" aria-hidden="true" />
-    <span className="scene-note note-top">A different kind<br />of page-turner.</span>
-    <div className="reader-phone">
-      <div className="phone-top"><span>9:41</span><span className="phone-island" /><span>•••</span></div>
-      <div className="reader-nav"><span>‹</span><span>Satinlore</span><span className="reader-type">Aa</span></div>
-      <div className="reader-story"><p className="chapter-kicker">A night of their own</p><h2>Just one<br /><em>more page.</em></h2>
-        <div className="preview-passages">{passages.map((passage, index) => <button type="button" key={index} className={`passage ${active === index ? "active" : ""}`} onClick={() => setActive(index)} aria-pressed={active === index}><span>{passage.text}</span></button>)}</div>
-      </div>
-      <div className="reader-controls"><div className="reader-level-top"><span><span className="status-dot" /> Strength</span><span>{passages[active].level}<small> / 10</small></span></div><div className="level-track"><span style={{ width: `${passages[active].level * 10}%` }} /></div><p>{passages[active].label}</p></div>
-    </div>
-    <div className="preview-caption"><span className="tiny-star" aria-hidden="true">✧</span><span>Tap a line. Watch the level change.<br /><strong>A sneak peek. No toy is linked.</strong></span></div>
-    <span className="scene-note note-bottom">Just read.<br />Feel it unfold.</span>
-  </div>;
-}
-
-function WaitlistForm() {
-  const [firstName, setFirstName] = useState("");
-  const [email, setEmail] = useState("");
-  const [adult, setAdult] = useState(false);
-  const [consent, setConsent] = useState(false);
-  const [newsletter, setNewsletter] = useState(false);
-  const [company, setCompany] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [state, setState] = useState("form");
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (busy) return; setError(""); setBusy(true);
-    try {
-      const sourceValue = new URLSearchParams(window.location.search).get("utm_source") || "direct";
-      const source = /^[a-zA-Z0-9_-]{1,64}$/.test(sourceValue) ? sourceValue : "direct";
-      const response = await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ firstName, email, adult, consent, newsletter, company, source }) });
-      const data = await response.json() as { ok?: boolean; error?: string; state?: string };
-      if (!response.ok || !data.ok) throw new Error(data.error || "We could not save your place. Please try again.");
-      setState(data.state === "check_email" ? "check_email" : "saved");
-    } catch (err) { setError(err instanceof Error ? err.message : "Something went wrong. Please try again."); }
-    finally { setBusy(false); }
-  }
-  if (state !== "form") return <div className="signup-success" aria-live="polite"><div className="success-mark" aria-hidden="true">✓</div><p className="eyebrow">Your next chapter</p>
-    <h3>{state === "check_email" ? "Check your inbox." : `Thanks, ${firstName.trim()}.`}</h3>
-    <p>{state === "check_email" ? "Tap the link in our email to save your spot. If you do not see it, check your spam folder." : "We’ve saved your name and email. We’ll ask you to check your inbox before we send you news."}</p>
-    <p>You can leave the list at any time.</p>
-    <button type="button" className="text-button" onClick={() => { setState("form"); setError(""); }}>Back to the form <Arrow small /></button>
-  </div>;
-  return <form onSubmit={submit} className="waitlist-form">
-    <label className="field" htmlFor="waitlist-name">First name<input id="waitlist-name" name="given-name" type="text" autoComplete="given-name" placeholder="Your first name" value={firstName} onChange={event => setFirstName(event.target.value)} required maxLength={60} /></label>
-    <label className="field" htmlFor="waitlist-email">Email address<input id="waitlist-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={event => setEmail(event.target.value)} required maxLength={254} /></label>
-    <div className="honeypot" aria-hidden="true"><label htmlFor="company">Company<input id="company" name="company" value={company} onChange={event => setCompany(event.target.value)} tabIndex={-1} autoComplete="off" /></label></div>
-    <label className="check-field"><input type="checkbox" required checked={adult} onChange={event => setAdult(event.target.checked)} /><span>I am 18 or over.</span></label>
-    <label className="check-field"><input type="checkbox" required checked={consent} onChange={event => setConsent(event.target.checked)} /><span>{CONSENT_TEXT}</span></label>
-    <label className="check-field optional-check"><input type="checkbox" checked={newsletter} onChange={event => setNewsletter(event.target.checked)} /><span>{NEWSLETTER_TEXT} <small>Your choice</small></span></label>
-    {error && <p role="alert" className="form-error">{error}</p>}
-    <button className="button submit-button" type="submit" disabled={busy}>{busy ? "Saving your place…" : "Join the list"}<Arrow /></button>
-    <p className="form-fineprint">Free to join. No card needed. Read our <a href="/privacy">privacy note</a>.</p>
-  </form>;
-}
+import { useEffect, useRef, useState } from "react";
+import WaitlistForm from "@/lib/WaitlistForm";
+import "./landing.css";
 
 export default function Home() {
-  return <><a href="#main" className="skip-link">Skip to content</a><header className="site-header site-shell"><a href="/" className="brand" aria-label="Satinlore home"><Mark /><span>Satinlore</span></a><nav aria-label="Main navigation"><a href="#how-it-works" className="nav-how">The idea</a><a href="#early-access" className="nav-cta">Join early access <Arrow small /></a></nav></header>
-    <main id="main"><section className="hero site-shell"><div className="hero-copy"><p className="eyebrow"><span className="status-dot" /> A new way to read · Coming soon</p><h1>Your stories.<br />A new way<br />to <em>feel them.</em></h1><p className="hero-description">Get lost in the story. Feel each twist and turn.</p><p className="hero-detail">Satinlore makes your toy match the story and the speed you read. It all happens on its own. Just read, relax, and enjoy.</p><a href="#early-access" className="button hero-button">Join early access <Arrow /></a><p className="hero-footnote">Free to join. For adults 18+.</p></div><ReaderPreview /></section>
-      <section className="editorial-strip"><div className="site-shell"><span className="strip-line" /><p>Bring your own story.<br className="mobile-break" /> Let the reading set the pace.</p><span className="strip-line" /></div></section>
-      <section id="how-it-works" className="how-section site-shell"><div className="section-heading"><p className="eyebrow">How it will feel</p><h2>A little closer<br />to the <em>story.</em></h2><p>Less to do. More to feel.</p></div><div className="how-steps"><article><span className="step-number">01</span><h3>Pick a story</h3><p>Start with a story you love. Settle in and make time for yourself.</p></article><article><span className="step-number">02</span><h3>Let it follow</h3><p>Your toy follows the story as you read. The feel builds and fades on its own, right with the words.</p></article><article><span className="step-number">03</span><h3>Make it your own</h3><p>Keep it soft or turn it up. Pause or stop at any time. It’s always your call.</p></article></div></section>
-      <section id="early-access" className="early-section"><div className="early-inner site-shell"><div className="early-copy"><p className="eyebrow">Be here for the first chapter</p><h2>Try it.<br />Shape it.<br /><em>Get paid.</em></h2><p>Join the waitlist for a chance to help us test SatinLore. If picked, you can earn up to US$500 cash. Tell us what works and what could be better.</p><div className="offer-note"><span aria-hidden="true">✧</span><div><strong>Up to US$500 in total for the test tasks you finish.</strong></div></div><p>Have a toy you love? Still looking? You’re welcome here.</p><a className="text-link" href="#questions">Have a question? <span aria-hidden="true">↓</span></a></div><div className="signup-panel"><p className="panel-label">Join the waitlist</p><WaitlistForm /></div></div></section>
-      <section id="questions" className="faq-section site-shell"><div className="section-heading"><p className="eyebrow">Before you turn the page</p><h2>A few<br /><em>questions.</em></h2></div><div className="faq-list"><details><summary>How does it work?</summary><p>Your toy follows the story and the speed you read. The feel changes on its own. You can turn it up, keep it soft, or pause at any time.</p></details><details><summary>Do I need a certain toy to join?</summary><p>No. You can join with any toy, or none yet. Tell us what you use to help choose which toys to add first.</p></details><details><summary>Is it free to join?</summary><p>Yes. It’s free to join, and you don’t need a card. We’ll share any prices before you choose a plan.</p></details><details><summary>When can I try it?</summary><p>We’re bringing Satinlore to life. Join the list to hear when it’s ready and get a chance to try it early.</p></details><details><summary>Can I get paid to test it?</summary><p>If picked, you can earn up to US$500 cash in total for the test tasks you finish. Tell us what works and what could be better.</p></details></div></section>
-      <section className="closing-line site-shell"><p>Some stories are worth<br /><em>slowing down for.</em></p><a href="#early-access" className="text-button">Be here for the first chapter <Arrow /></a></section></main>
-    <footer className="site-footer site-shell"><a href="/" className="brand footer-brand"><Mark /><span>Satinlore</span></a><p>Feel the story unfold.</p><nav aria-label="Footer navigation"><a href="/privacy">Privacy</a><a href="/contact">Contact</a><span>18+</span></nav><small>© {new Date().getFullYear()} Satinlore. Coming soon.</small></footer></>;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [atForm, setAtForm] = useState(false);
+  const formCard = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const card = formCard.current;
+    if (!card) return;
+    const observer = new IntersectionObserver(entries => setAtForm(entries[0].isIntersecting), { threshold: .05 });
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
+  return <div className="landing-page">
+
+<a className="skip-link" href="#main">Skip to content</a>
+
+<header className="header"><div className="shell header-inner">
+<a className="wordmark" href="#top" aria-label="SatinLore home">SatinLore<span>.</span></a>
+<nav id="nav" aria-label="Main navigation" className={menuOpen ? "is-open" : undefined} onClick={() => setMenuOpen(false)}><a href="#experience">The experience</a><a href="#beta">Beta programme</a><a href="#questions">FAQs</a></nav>
+<a className="button header-cta" href="#waitlist">Get paid as a beta tester <span aria-hidden="true">↗</span></a>
+<button type="button" className="menu-toggle" aria-expanded={menuOpen} aria-controls="nav" aria-label={menuOpen ? "Close navigation" : "Open navigation"} onClick={() => setMenuOpen(!menuOpen)}><span></span><span></span></button>
+</div></header>
+<main id="main">
+<section className="hero shell" id="top">
+<div className="hero-copy"><p className="eyebrow"><span className="dot"></span> Erotica reader + connected sex toys</p>
+<h1>Read the story.<br />Feel <em>every turn.</em></h1>
+<p className="hero-body">Upload your story. SatinLore analyses it automatically, then changes the intensity and rhythm of your compatible sex toy as you read.</p>
+<div className="status-line"><span>Coming soon</span><span>Adults 18+</span></div>
+<div className="cta-pair"><a className="button" href="#waitlist">Get paid as a beta tester <span aria-hidden="true">↗</span></a><a className="secondary-link" href="#waitlist">Or get free early access <span aria-hidden="true">→</span></a></div>
+<p className="qualification">Join the waitlist. Selected readers may receive free early access or earn <strong>up to US$500 in total</strong> for agreed test tasks.</p>
+<a className="see-link" href="#experience"><span className="play-mark" aria-hidden="true">↓</span> See how your story becomes a feeling</a>
+</div>
+<figure className="hero-art panel-figure"><img src="/images/landing/analysis.webp" alt="A story on a phone with highlighted passages linked to different vibration patterns beneath a plum connected device." width="1122" height="1402" fetchPriority="high" /></figure>
+</section>
+<section className="steps-band" aria-label="How SatinLore works"><div className="shell steps">
+<article><span>01</span><div><h2>Upload your story.</h2><p>Automatic analysis prepares the changing intensity and rhythm for you.</p></div></article>
+<article><span>02</span><div><h2>Connect your toy.</h2><p>Connect a compatible device and confirm the experience you want.</p></div></article>
+<article><span>03</span><div><h2>Read. Feel it follow.</h2><p>The pattern changes with the scene and your reading pace.</p></div></article>
+</div></section>
+<section id="experience" className="story-section shell rhythm-section">
+<figure className="panel-figure"><img loading="lazy" src="/images/landing/rhythms.webp" alt="A reading scene and device illustrated with sharp bursts, a flat pause, low pulses and a fresh surge." width="1122" height="1402" /></figure>
+<div className="story-copy"><p className="eyebrow">Scene-aware experiences</p><h2>Feel every turn<br />in the <em>scene.</em></h2>
+<p>SatinLore reads the mood, pacing and shifts within each scene, weaving sustained intensity, sharp peaks and sudden drops into a changing experience that feels part of the story.</p>
+<div className="feature-inset"><p className="mini-label">Rhythm with real variety</p><h3>Spikes. Stillness.<br />A new rhythm.</h3><p>Rapid pulses break into flatlines. Low, lingering rhythms give way to fresh bursts. Even an intense scene can change pace, using interruptions and contrast to make the next surge feel different.</p></div>
+</div></section>
+<section className="reading-band"><div className="story-section shell reverse">
+<div className="story-copy"><p className="eyebrow">Sync that reads with you</p><h2>In step with<br /><em>every passage.</em></h2>
+<p>Your pace, scrolls and time on the page help SatinLore follow your place within the text. Linger over a passage or read without scrolling: the feeling keeps pace.</p>
+<div className="reading-cues" aria-label="Reading cues"><span>Your pace</span><span>Your scrolling</span><span>Time on the page</span></div>
+<p className="small-copy">Your story sets the scene. The way you read sets the timing.</p>
+</div>
+<figure className="panel-figure"><img loading="lazy" src="/images/landing/reading.webp" alt="Two reading views, including a still page, paired with a device and a changing response line." width="1122" height="1402" /></figure>
+</div></section>
+<section className="story-section shell control-section">
+<figure className="panel-figure"><img loading="lazy" src="/images/landing/controls.webp" alt="A reading phone and device with illustrative intensity, pause and stop controls and two different rhythm patterns." width="1122" height="1402" /></figure>
+<div className="story-copy"><p className="eyebrow">Your story. Your experience.</p><h2>Make the feeling<br /><em>your own.</em></h2>
+<p>Feel the build-up, the sudden shifts and the next surge as if you were in the scene. Shape the intensity to suit you while the story keeps the rhythm moving.</p>
+<div className="control-tags"><span>Intensity</span><span>Rhythm</span><span>Maximum strength</span><span>Pause & stop</span></div>
+<a className="text-cta" href="#waitlist">Help us shape the experience <span aria-hidden="true">→</span></a>
+</div></section>
+<section id="beta" className="beta-section"><div className="shell beta-inner">
+<div className="beta-copy"><p className="eyebrow">Refined through beta testing</p><h2>Fine-tuned for<br /><em>maximum pleasure.</em></h2>
+<p className="beta-intro">Hundreds to thousands of beta testers will help refine intensity, rhythm and interruptions through real reading sessions, shaping an experience built around what feels best.</p>
+<div className="opportunities"><article><span className="opportunity-number">01</span><h3>Get paid to test.</h3><p>Selected testers can earn up to <strong>US$500 in total</strong> for agreed test tasks they complete.</p></article><article><span className="opportunity-number">02</span><h3>Try it early, free.</h3><p>Selected readers may get free early access and help shape what comes next.</p></article></div>
+<a className="button light-button" href="#waitlist">Get paid as a beta tester <span aria-hidden="true">↗</span></a>
+<p className="beta-fineprint">Free to join. Selection is limited. Payment is for completed tasks and honest feedback.</p>
+</div>
+<a className="invitation-art panel-figure" href="#waitlist" aria-label="Join the waitlist for paid testing or free early access"><img loading="lazy" src="/images/landing/beta.webp" alt="A reader, a phone and a device, with an invitation to help shape the experience and apply for paid beta testing." width="1122" height="1402" /></a>
+</div></section>
+
+<section className="signup-section" id="waitlist"><span id="early-access" className="legacy-anchor" aria-hidden="true"></span><div className="shell signup-inner"><div className="signup-copy"><p className="eyebrow">Your invitation to the beta</p><h2>Be one of the<br /><em>first to feel it.</em></h2><p>Get a chance to test SatinLore, earn cash and help shape how the story feels.</p>
+<div className="signup-rewards"><article><p className="reward-label">For selected beta testers</p><h3>Up to <strong>US$500</strong></h3><p>Earn up to US$500 in total for agreed test tasks you complete. Selected readers may also get free early access.</p></article><article><p className="reward-label">For joining + the questionnaire</p><h3>A chance to win <strong>US$50</strong></h3><p>Join the waitlist, confirm your email and complete the questionnaire to enter the draw for one of ten US$50 cash prizes.</p><p className="reward-note">One entry per valid entrant. Story and toy questions are optional. Skipping them does not change your odds.</p></article></div>
+<ol className="next-steps"><li><span>01</span>Join the waitlist.</li><li><span>02</span>Confirm your email.</li><li><span>03</span>Complete the questionnaire and choose to enter.</li></ol><p className="selection-note">Joining is free. Test places, payment, free access and draw prizes are not guaranteed. Paid testing rewards your time and honest feedback.</p></div>
+<div id="beta-form" className="signup-card" ref={formCard}><p className="form-kicker">Paid testing / Free early access / Cash draw</p><h3>Join the beta waitlist</h3><p className="form-intro">Free to join. No card needed.</p><WaitlistForm /></div></div></section><section className="faq-section shell" id="questions"><div className="faq-heading"><p className="eyebrow">Before you join</p><h2>A few good<br /><em>questions.</em></h2><p>What it does, how it follows your reading, and what beta testing involves.</p></div><div className="faq-list">
+<details open><summary>What does SatinLore do?</summary><p>SatinLore is an adult reading app that syncs a compatible sex toy with romance and erotica. Upload or paste your story: automatic analysis turns its mood, pacing and scene changes into shifting intensity and rhythms that follow your reading.</p></details>
+<details><summary>Do I have to set up every vibration?</summary><p>No. SatinLore analyses your story and prepares its changing intensity and rhythms automatically. Keep your stories saved, confirm your settings and start reading. You can tailor the experience without programming every scene.</p></details>
+<details><summary>How much does the rhythm change?</summary><p>Sharp bursts can give way to flatlines, low pulses and renewed spikes — all within one intense scene. Sustained rhythms, interruptions and changes in pace create contrast, so the experience has more variety than a simple rise and fall in strength.</p></details>
+<details><summary>Does it work when I stop scrolling?</summary><p>SatinLore uses your pace, scrolling and time on the page to estimate which passage you are reading. It can follow your progress down a still page and account for time spent lingering. Beta testing will help fine-tune how closely the timing matches your reading.</p></details>
+<details><summary>Which sex toys will work?</summary><p>The synced experience needs a compatible connected sex toy. We will share the tested device list before beta sessions. You can join the waitlist with any toy, or without one yet.</p></details>
+<details><summary>How much can I personalise?</summary><p>Make the experience feel right for you. Turn the strength up or down while the rhythms follow the scene, from slow builds to sudden peaks and pauses. You can also set a ceiling, pause or stop at any time.</p></details>
+<details><summary>How will beta testers shape it?</summary><p>Our beta programme will involve hundreds to thousands of testers refining intensity, timing, rhythmic interruptions and transitions through real reading sessions. Their feedback will guide what we keep and improve, making the experience as pleasurable as possible for launch.</p></details>
+<details><summary>What happens after I join the waitlist?</summary><p>Confirm your email, then complete the questionnaire to tell us about your reading and setup. You can opt into the draw for one of ten US$50 cash prizes. Selected readers may get free early access or earn up to US$500 in total for agreed test tasks they complete. Joining is free. Story and toy questions are optional; skipping them does not change your draw odds.</p></details>
+</div></section>
+</main>
+<footer className="footer shell"><a className="wordmark" href="#top">SatinLore<span>.</span></a><p>Feel the story unfold.</p><nav aria-label="Footer"><a href="/privacy">Privacy</a><a href="/contact">Contact</a><span>18+</span></nav><small>© {new Date().getFullYear()} SatinLore. Coming soon.</small></footer>
+<div className={`mobile-cta${atForm ? " is-at-form" : ""}`}><a className="button" href="#waitlist">Get paid as a beta tester <span aria-hidden="true">↗</span></a></div>
+
+
+</div>;
 }

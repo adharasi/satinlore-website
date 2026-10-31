@@ -17,6 +17,14 @@ The repository is currently **public**. Source code belongs here; customer recor
 - Cloudflare D1 schema with append-only, tracked migrations, including `0006` for survey responses and delayed invitations.
 - Cloudflare Access authentication for the founder dashboard and admin APIs.
 
+## Landing page design (31 October 2026)
+
+The homepage now explains the adult reading/device experience immediately, with five story panels covering automatic analysis, varied rhythms, reading pace, personal control and beta participation. Paid-testing and free-access CTAs lead to the existing waitlist. The signup section repeats the selected-tester offer (up to US$500 total for agreed completed tasks) and the questionnaire draw (a chance to win one of ten US$50 prizes). FAQs follow signup.
+
+Homepage styles are scoped under `.landing-page`; shared CRM and account-page styles remain unchanged. `lib/WaitlistForm.tsx` retains the existing API payload, consent text, hidden anti-spam field, UTM source, busy/error states and inbox-confirmation outcome. Both `#waitlist` and the existing `#early-access` links reach signup. This design release changes no API, database migration, Google Forms bridge, scheduled email job or runtime setting.
+
+To check the UI locally, use the local-only settings in `.dev.vars.example`, apply local migrations, and run `pnpm dev`. Review 320px/375px mobile, tablet, desktop and wide-screen layouts; test the menu, FAQ disclosures and CTA anchors. A local signup with sending disabled only creates local test data. After deployment, verify the GitHub and Cloudflare build results and inspect the public homepage. Real confirmation/inbox-delivery checks still require an inbox you control; local checks do not prove production email delivery.
+
 The old immediate reader welcome email stays off. The approved delayed survey invitation has its own `SURVEY_EMAIL_ENABLED` switch. It does not send to people already verified before the new migration. There is no general newsletter sender, automatic Google Sheets sync, automatic SES bounce ingestion or scheduled founder-alert retry. Google Forms syncing needs its private shared secret and authorised form-bound triggers before it can run.
 
 ## Deployment status
