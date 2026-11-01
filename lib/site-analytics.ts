@@ -1,4 +1,4 @@
-/** Small first-party counters. No visitor identifiers or raw request values enter this table. */
+/** First-party daily counters, with separately stored, short-lived pseudonymous dedupe keys. */
 export const METRIC_PAGES = ["/", "/privacy", "/contact", "/research-privacy"] as const;
 export const CTA_SURFACES = ["header", "hero", "beta", "controls", "mobile"] as const;
 const SOURCES = ["direct", "x", "instagram", "reddit", "tiktok", "youtube", "facebook", "linkedin", "email", "search", "other"] as const;
@@ -77,9 +77,43 @@ export function ctaMetric(request: Request, body: unknown, now = Date.now()): Me
 }
 export const INCREMENT_METRIC_SQL = `INSERT INTO website_metrics(day,event,page,source,referrer,device,count,last_seen)
 VALUES(?,?,?,?,?,?,1,?) ON CONFLICT(day,event,page,source,referrer,device) DO UPDATE SET count=website_metrics.count+1,last_seen=excluded.last_seen`;
-export async function recordMetric(db: D1Database, metric: MetricRecord, now = Date.now()) {
+function metricStatement(db: D1Database, metric: MetricRecord, now: number) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(metric.day) || !["page_view", "cta_click"].includes(metric.event) || !METRIC_PAGES.includes(metric.page) || !SOURCES.includes(metric.source) || !REFERRERS.includes(metric.referrer) || !DEVICES.includes(metric.device)) throw new Error("Invalid metric");
-  await db.prepare(INCREMENT_METRIC_SQL).bind(metric.day, metric.event, metric.page, metric.source, metric.referrer, metric.device, now).run();
+  return db.prepare(INCREMENT_METRIC_SQL).bind(metric.day, metric.event, metric.page, metric.source, metric.referrer, metric.device, now);
+}
+export async function recordMetric(db: D1Database, metric: MetricRecord, now = Date.now()) {
+  await metricStatement(db, metric, now).run();
+}
+/** Only a broad family is used in memory; neither it nor the full UA is stored in dedupe records. */
+function browserFamily(headers: Headers) {
+  const agent = headers.get("user-agent") || "";
+  if (!agent) return "unknown";
+  if (/edg(?:e|a|ios)?\//i.test(agent)) return "edge";
+  if (/opr\/|opera/i.test(agent)) return "opera";
+  if (/samsungbrowser\//i.test(agent)) return "samsung";
+  if (/firefox\/|fxios\//i.test(agent)) return "firefox";
+  if (/chrome\/|crios\//i.test(agent)) return "chrome";
+  if (/safari\//i.test(agent)) return "safari";
+  return "other";
+}
+async function uniqueStatements(db: D1Database, request: Request, metric: MetricRecord, salt?: string) {
+  // CF-Connecting-IP is set by our Cloudflare edge. Never use client-submitted IDs, X-Forwarded-For or URL values.
+  const ip = request.headers.get("cf-connecting-ip");
+  if (!salt || !ip || ip.length > 45 || !/^[\da-f:.]+$/i.test(ip)) return [];
+  const encoder = new TextEncoder();
+  const importKey = (raw: ArrayBuffer) => crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const rootKey = await importKey(encoder.encode(salt).buffer);
+  const dailyKey = await importKey(await crypto.subtle.sign("HMAC", rootKey, encoder.encode(`satinlore:daily-uniques:v1:${metric.day}`)));
+  // One minute covers in-flight waitUntil writes at midnight; scheduled cleanup removes expired keys.
+  const expiresAt = Date.parse(metric.day + "T00:00:00Z") + DAY + 60000;
+  const family = browserFamily(request.headers);
+  return Promise.all(["*", metric.page].map(async scope => {
+    // Separate scope inputs avoid storing a common code that could connect a person's page visits.
+    const input = JSON.stringify([scope, ip, family, metric.device]);
+    const digest = await crypto.subtle.sign("HMAC", dailyKey, encoder.encode(input));
+    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    return db.prepare("INSERT INTO website_daily_uniques(day,page,visitor_hash,expires_at) VALUES(?,?,?,?) ON CONFLICT(day,page,visitor_hash) DO NOTHING").bind(metric.day, scope, hash, expiresAt);
+  }));
 }
 /** Independent short-lived abuse bucket: never consumes a signup/contact attempt. */
 export async function analyticsRateLimit(db: D1Database, request: Request, salt: string | undefined, kind: "page" | "cta", now = Date.now()) {
@@ -92,17 +126,20 @@ export async function analyticsRateLimit(db: D1Database, request: Request, salt:
 }
 export async function trackPageView(db: D1Database, request: Request, result: Response, salt?: string, now = Date.now()) {
   const metric = pageMetric(request, result, now);
-  if (metric && await analyticsRateLimit(db, request, salt, "page", now)) await recordMetric(db, metric, now);
+  if (metric && await analyticsRateLimit(db, request, salt, "page", now)) {
+    // D1 batches are transactional. Only newly inserted dedupe keys fire the aggregate-count trigger.
+    await db.batch([metricStatement(db, metric, now), ...await uniqueStatements(db, request, metric, salt)]);
+  }
 }
 
-export type AnalyticsCounts = { pageviews: number; ctaClicks: number; signups: number; verified: number; surveyResponses: number; contacts: number };
+export type AnalyticsCounts = { pageviews: number; uniqueVisitors: number; uniquePageviews: number; ctaClicks: number; signups: number; verified: number; surveyResponses: number; contacts: number };
 export type AnalyticsOverview = {
   days: number; from: number; trackingSince: number | null; totals: AnalyticsCounts;
   daily: ({ day: string } & AnalyticsCounts)[];
   sources: { label: string; count: number; signups: number }[];
-  referrers: { label: string; count: number }[]; devices: { label: string; count: number }[]; pages: { label: string; count: number }[];
+  referrers: { label: string; count: number }[]; devices: { label: string; count: number }[]; pages: { label: string; count: number; uniqueViews: number }[];
 };
-const emptyCounts = (): AnalyticsCounts => ({ pageviews: 0, ctaClicks: 0, signups: 0, verified: 0, surveyResponses: 0, contacts: 0 });
+const emptyCounts = (): AnalyticsCounts => ({ pageviews: 0, uniqueVisitors: 0, uniquePageviews: 0, ctaClicks: 0, signups: 0, verified: 0, surveyResponses: 0, contacts: 0 });
 const sourceCase = "CASE lower(trim(source)) " + Object.entries(sourceAliases).map(([value, category]) => `WHEN '${value}' THEN '${category}'`).join(" ") + " WHEN '' THEN 'direct' ELSE 'other' END";
 export async function readAnalyticsOverview(db: D1Database, requestedDays = 30, now = Date.now()): Promise<AnalyticsOverview> {
   const days = [7, 30, 90].includes(requestedDays) ? requestedDays : 30;
@@ -116,6 +153,8 @@ export async function readAnalyticsOverview(db: D1Database, requestedDays = 30, 
   for (const row of metricRows.results) {
     const day = dayMap.get(row.day); if (!day) continue;
     if (row.event === "page_view") day.pageviews = Number(row.count);
+    if (row.event === "unique_visitor") day.uniqueVisitors = Number(row.count);
+    if (row.event === "unique_page_view") day.uniquePageviews = Number(row.count);
     if (row.event === "cta_click") day.ctaClicks = Number(row.count);
   }
   const activityQueries: [keyof Pick<AnalyticsCounts, "signups" | "verified" | "surveyResponses" | "contacts">, string][] = [
@@ -135,6 +174,9 @@ export async function readAnalyticsOverview(db: D1Database, requestedDays = 30, 
   const sourceMap = new Map(sourceRows.results.map(row => [row.label, { label: row.label, count: Number(row.count), signups: 0 }]));
   for (const row of signupSources.results) { const value = sourceMap.get(row.label) || { label: row.label, count: 0, signups: 0 }; value.signups = Number(row.count); sourceMap.set(row.label, value); }
   const breakdown = async (column: "referrer" | "device" | "page") => (await db.prepare(`SELECT ${column} label,SUM(count) count FROM website_metrics WHERE day>=? AND day<=? AND event='page_view' GROUP BY ${column} ORDER BY count DESC,${column}`).bind(fromDay, todayDay).all<{ label: string; count: number }>()).results.map(row => ({ label: row.label, count: Number(row.count) }));
+  const pageUniques = await db.prepare("SELECT page label,SUM(count) count FROM website_metrics WHERE day>=? AND day<=? AND event='unique_page_view' GROUP BY page").bind(fromDay, todayDay).all<{ label: string; count: number }>();
+  const pageUniqueMap = new Map(pageUniques.results.map(row => [row.label, Number(row.count)]));
+  const pages = (await breakdown("page")).map(row => ({ ...row, uniqueViews: pageUniqueMap.get(row.label) || 0 }));
   const earliest = await db.prepare("SELECT MIN(day) day FROM website_metrics").first<{ day: string | null }>();
-  return { days, from, trackingSince: earliest?.day ? Date.parse(earliest.day + "T00:00:00Z") : null, totals, daily, sources: [...sourceMap.values()].sort((a, b) => b.count - a.count || b.signups - a.signups || a.label.localeCompare(b.label)), referrers: await breakdown("referrer"), devices: await breakdown("device"), pages: await breakdown("page") };
+  return { days, from, trackingSince: earliest?.day ? Date.parse(earliest.day + "T00:00:00Z") : null, totals, daily, sources: [...sourceMap.values()].sort((a, b) => b.count - a.count || b.signups - a.signups || a.label.localeCompare(b.label)), referrers: await breakdown("referrer"), devices: await breakdown("device"), pages };
 }

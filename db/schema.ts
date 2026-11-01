@@ -67,6 +67,17 @@ export const websiteMetrics = sqliteTable("website_metrics", {
   index("website_metrics_day_event_idx").on(table.day,table.event),
 ]);
 
+// Short-lived pseudonymous dedupe keys. The migration trigger increments daily totals only on insertion.
+export const websiteDailyUniques = sqliteTable("website_daily_uniques", {
+  day: text("day").notNull(),
+  page: text("page").notNull(),
+  visitorHash: text("visitor_hash").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+}, table => [
+  primaryKey({ columns: [table.day, table.page, table.visitorHash] }),
+  index("website_daily_uniques_expiry_idx").on(table.expiresAt),
+]);
+
 export const surveyEmailJobs = sqliteTable("survey_email_jobs", {
   email: text("email").primaryKey(),
   waitlistId: text("waitlist_id").notNull(),

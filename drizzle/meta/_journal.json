@@ -57,6 +57,13 @@
       "when": 1793491825388,
       "tag": "0007_site_metrics_and_contact_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793494835712,
+      "tag": "0008_daily_unique_views",
+      "breakpoints": true
     }
   ]
 }

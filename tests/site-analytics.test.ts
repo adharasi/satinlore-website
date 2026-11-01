@@ -16,15 +16,21 @@ CREATE TABLE rate_limits(key TEXT PRIMARY KEY,count INTEGER,expires_at INTEGER);
 CREATE TABLE waitlist(id TEXT PRIMARY KEY,email TEXT,source TEXT,created_at INTEGER,confirmed_at INTEGER,email_verified INTEGER,expires_at INTEGER);
 CREATE TABLE questionnaire_responses(email TEXT PRIMARY KEY,submitted_at INTEGER,expires_at INTEGER);
 CREATE TABLE contact_requests(id TEXT PRIMARY KEY,created_at INTEGER,expires_at INTEGER);`);
+  sqlite.exec(readFileSync(new URL("../drizzle/0008_daily_unique_views.sql", import.meta.url), "utf8"));
   const driver = {
     prepare(sql: string) {
       const statement = sqlite.prepare(sql); let values: (string | number)[] = [];
       return {
         bind(...bound: (string | number)[]) { values = bound; return this; },
-        async run() { return statement.run(...values); },
+        run() { return statement.run(...values); },
         async first() { return statement.get(...values) || null; },
         async all() { return { results: statement.all(...values) }; },
       };
+    },
+    async batch(statements: { run: () => unknown }[]) {
+      sqlite.exec("BEGIN");
+      try { const results = statements.map(statement => statement.run()); sqlite.exec("COMMIT"); return results; }
+      catch (error) { sqlite.exec("ROLLBACK"); throw error; }
     },
   } as unknown as D1Database;
   return { sqlite, driver };
@@ -66,14 +72,14 @@ test("CTA input is bounded to the approved homepage actions and cannot become a 
   assert.equal(ctaMetric(page(), body, now)?.source, "instagram");
   for (const change of [{ page: "/manage" }, { event: "email_open" }, { surface: "private-email" }, { email: "reader@example.test" }, { source: "x".repeat(65) }]) assert.equal(ctaMetric(page(), { ...body, ...change }, now), null);
 });
-test("counter upserts aggregate actions without storing a visitor record and rate limits do not consume signup buckets", async t => {
+test("counter upserts aggregate actions alongside short-lived daily dedupe codes and rate limits do not consume signup buckets", async t => {
   const { sqlite, driver } = fixture(); t.after(() => sqlite.close());
   const request = page("/?utm_source=x", { "CF-Connecting-IP": "192.0.2.10" });
   await trackPageView(driver, request, html(), "synthetic-secret", now);
   await trackPageView(driver, request, html(), "synthetic-secret", now + 1);
-  const row = sqlite.prepare("SELECT * FROM website_metrics").get()!;
+  const row = sqlite.prepare("SELECT * FROM website_metrics WHERE event='page_view'").get()!;
   assert.equal(row.count, 2); assert.equal(row.source, "x");
-  assert.equal(sqlite.prepare("SELECT COUNT(*) total FROM website_metrics").get()?.total, 1);
+  assert.equal(sqlite.prepare("SELECT COUNT(*) total FROM website_metrics").get()?.total, 3);
   assert.doesNotMatch(JSON.stringify(row), /192\.0\.2|synthetic-secret|Mozilla/);
   for (let i = 0; i < 120; i++) assert.equal(await analyticsRateLimit(driver, request, "synthetic-secret", "cta", now), true);
   assert.equal(await analyticsRateLimit(driver, request, "synthetic-secret", "cta", now), false);
@@ -93,7 +99,7 @@ test("admin analytics reconcile retained activity and dedupe repeat waitlist ema
   sqlite.prepare("INSERT INTO questionnaire_responses VALUES(?,?,?)").run("survey@example.test", later, expiry);
   sqlite.prepare("INSERT INTO contact_requests VALUES(?,?,?)").run("note", later, expiry);
   const result = await readAnalyticsOverview(driver, 7, now);
-  assert.deepEqual(result.totals, { pageviews: 2, ctaClicks: 1, signups: 1, verified: 1, surveyResponses: 1, contacts: 1 });
+  assert.deepEqual(result.totals, { pageviews: 2, uniqueVisitors: 0, uniquePageviews: 0, ctaClicks: 1, signups: 1, verified: 1, surveyResponses: 1, contacts: 1 });
   assert.equal(result.daily.length, 7); assert.equal(result.trackingSince, Date.UTC(2026, 9, 30));
   assert.deepEqual(result.sources, [{ label: "x", count: 2, signups: 1 }]);
   assert.equal(result.daily.reduce((sum: number, day: { signups: number }) => sum + day.signups, 0), 1);

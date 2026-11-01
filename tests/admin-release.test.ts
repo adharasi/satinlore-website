@@ -32,8 +32,8 @@ function migratedDatabase() {
   const db=new DatabaseSync(":memory:");
   const directory=new URL("../drizzle/",import.meta.url);
   const files=readdirSync(directory).filter(name=>name.endsWith(".sql")).sort();
-  for(const name of files)if(!name.startsWith("0007_"))db.exec(readFileSync(new URL(name,directory),"utf8"));
-  return {db,applyNew:()=>db.exec(readFileSync(new URL("0007_site_metrics_and_contact_inbox.sql",directory),"utf8"))};
+  for(const name of files)if(name < "0007_")db.exec(readFileSync(new URL(name,directory),"utf8"));
+  return {db,applyNew:()=>{for(const name of files)if(name >= "0007_")db.exec(readFileSync(new URL(name,directory),"utf8"));}};
 }
 
 test("the additive release migration preserves old contact notes and creates query indexes", () => {

@@ -23,7 +23,7 @@ export default function MeasurementChoices() {
   return <aside id="measurement-choices" className="measurement-choices" aria-label="Website measurement choices">
     <p role="status">{!ready ? "Loading your measurement choice…" : browserOff ? "Website measurement is off because your browser sends a privacy signal." : off ? "Website measurement is off in this browser." : "Aggregate website measurement is on in this browser."}</p>
     {!browserOff && <button className="button" type="button" onClick={change} disabled={!ready}>{off ? "Allow aggregate measurement" : "Turn off website measurement"}</button>}
-    <p className="form-hint">This choice applies to this browser. A preference cookie remembers it for 180 days; it contains no visitor ID. Aggregate counts already recorded cannot be linked back to you.</p>
+    <p className="form-hint">This choice applies to this browser. A preference cookie remembers it for 180 days; it contains no visitor ID. Turning measurement off stops new counts from this browser. Protected daily codes expire just after UTC midnight; the daily totals already counted remain.</p>
     {message && <p role="alert">{message}</p>}
   </aside>;
 }

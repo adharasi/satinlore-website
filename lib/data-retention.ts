@@ -4,6 +4,7 @@ export async function purgeExpiredRecords(db: D1Database, now = Date.now()) {
     db.prepare("DELETE FROM waitlist WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM contact_requests WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM rate_limits WHERE expires_at <= ?").bind(now),
+    db.prepare("DELETE FROM website_daily_uniques WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM website_metrics WHERE day < ?").bind(new Date(now - 89 * 86400000).toISOString().slice(0,10)),
     db.prepare("DELETE FROM questionnaire_responses WHERE expires_at <= ?").bind(now),
     db.prepare("DELETE FROM survey_email_jobs WHERE NOT EXISTS (SELECT 1 FROM waitlist w WHERE w.email=survey_email_jobs.email AND w.expires_at > ?)").bind(now),
