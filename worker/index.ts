@@ -1,6 +1,7 @@
 import { purgeExpiredRecords } from "../lib/data-retention";
 import handler from "vinext/server/fetch-handler";
 import { processSurveyEmailJobs } from "../lib/survey-email-jobs";
+import { trackPageView } from "../lib/site-analytics";
 
 export default {
   async scheduled(_controller: ScheduledController, env: Cloudflare.Env, ctx: ExecutionContext) {
@@ -22,6 +23,7 @@ export default {
   },
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext) {
     const result = await handler.fetch(request, env, ctx);
+    ctx.waitUntil(trackPageView(env.DB, request, result, env.ABUSE_SALT).catch(() => undefined));
     const secured = new Response(result.body, result);
     secured.headers.set("Referrer-Policy", "no-referrer");
     secured.headers.set("X-Content-Type-Options", "nosniff");

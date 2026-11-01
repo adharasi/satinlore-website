@@ -1,0 +1,29 @@
+.contact-inbox{min-width:0;font-size:var(--body-size,1rem)}
+.contact-inbox .inbox-status-counts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(.6rem,1vw,1.25rem);margin-block:1.5rem}
+.contact-inbox .inbox-status-counts button{display:flex;flex-direction:column;align-items:flex-start;gap:.35rem;padding:clamp(.9rem,1.3vw,1.75rem);border:1px solid var(--line);border-radius:.4rem;background:var(--white);color:var(--plum);text-align:left}
+.contact-inbox .inbox-status-counts button[aria-pressed="true"]{border-color:var(--wine);background:#eee1df}
+.contact-inbox .inbox-status-counts strong{font:clamp(1.8rem,1.1rem + 1.1vw,3rem)/1 Georgia,serif;font-weight:400}
+.contact-inbox .inbox-status-counts span{font-size:var(--small-size,.875rem)}
+.contact-inbox .inbox-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.85rem;padding-block:1rem}
+.contact-inbox .inbox-filters label,.contact-inbox .inbox-message header>label{display:grid;gap:.4rem;font-size:var(--small-size,.875rem);color:var(--muted);min-width:0}
+.contact-inbox .inbox-search{flex:1 1 18rem}
+.contact-inbox input,.contact-inbox select{font:inherit;font-size:max(1rem,var(--small-size,.875rem));padding:.7rem .75rem;border:1px solid var(--line);background:var(--white);border-radius:3px;min-height:3rem;max-width:100%;color:var(--ink)}
+.contact-inbox .inbox-help{font-size:var(--small-size,.875rem);line-height:1.8;color:var(--muted);max-width:95ch;margin-block:1rem 1.5rem}
+.contact-inbox .inbox-results-heading{display:flex;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--line);padding-block:.8rem;color:var(--muted);font-size:var(--small-size,.875rem)}
+.contact-inbox .inbox-messages{display:grid;gap:1rem;margin-block:1.25rem}
+.contact-inbox .inbox-message{background:var(--white);border:1px solid var(--line);border-radius:.4rem;padding:clamp(1rem,1.5vw,2rem);min-width:0}
+.contact-inbox .inbox-message-new{border-left:4px solid var(--wine)}
+.contact-inbox .inbox-message header{display:flex;justify-content:space-between;align-items:flex-start;gap:1.2rem;min-width:0}
+.contact-inbox .inbox-message header>div{min-width:0}
+.contact-inbox .inbox-message h2{font:clamp(1.3rem,1rem + .45vw,2rem)/1.45 Georgia,serif;overflow-wrap:anywhere;color:var(--plum);margin:.6rem 0 .25rem}
+.contact-inbox .inbox-message header p,.contact-inbox .inbox-message footer{font-size:var(--small-size,.875rem);color:var(--muted)}
+.contact-inbox .inbox-badge,.contact-inbox .inbox-state{display:inline-block;font-size:.8em;line-height:1.5;padding:.25rem .55rem;border-radius:3px;background:#eee5dc;color:var(--plum);margin-right:.45rem}
+.contact-inbox .inbox-state-new{background:#ecd6df}.contact-inbox .inbox-state-resolved{background:#e1eadc;color:#3e5237}
+.contact-inbox .inbox-message-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;margin-block:1.2rem;color:var(--ink);max-width:110ch}
+.contact-inbox .inbox-message footer{display:flex;justify-content:space-between;align-items:center;gap:1rem;border-top:1px solid var(--line);padding-top:.9rem;flex-wrap:wrap}
+.contact-inbox .inbox-pagination{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-block:1.5rem}
+.contact-inbox .inbox-pagination>span{font-size:var(--small-size,.875rem);color:var(--muted)}
+.contact-inbox .inbox-notice{padding:.8rem 1rem;background:#e9eee2;color:#405235;border:1px solid #cad6bd;border-radius:3px}
+.contact-inbox .inbox-empty{padding:2rem 1rem;border:1px dashed var(--line);border-radius:.4rem;text-align:center;margin-top:1rem}
+.contact-inbox .inbox-empty h2{font-size:1.6rem;margin-bottom:.65rem}.contact-inbox .inbox-empty .text-button{margin-top:.75rem}
+@media(max-width:700px){.contact-inbox .inbox-status-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-inbox .inbox-message header{flex-direction:column}.contact-inbox .inbox-message header>label{width:100%}.contact-inbox .inbox-filters>label{flex:1 1 10rem}.contact-inbox .inbox-filters>.inbox-search{flex-basis:100%}.contact-inbox .inbox-pagination .button{padding:.65rem 1rem;min-height:2.75rem}.contact-inbox .inbox-message h2{font-size:1.3rem}}

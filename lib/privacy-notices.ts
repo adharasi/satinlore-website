@@ -1,4 +1,4 @@
-// Published copy from the owner-approved Google Drive notices, retrieved 30 October 2026.
+// Owner-approved notices retrieved 30 October 2026; website measurement disclosure updated 1 November 2026.
 // Website: 02 — Website Privacy Notice (29 October 2026).
 // Research: 01 — Research Privacy Notice (29 October 2026).
 // Keep research notice links in questionnaires/forms, not in the site navigation.
@@ -43,6 +43,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       "paragraphs": [
         "Our website hosting and security services may process technical information needed to deliver the page and protect it. This can include your IP address, browser and device type, the requested page, time of access and error or security records.",
         "We may record the link or campaign that brought a signup to us, such as a referral or campaign code. We use this to understand how people find SatinLore. We do not put your email address or private research answers in public links.",
+        "We also count public page views and waitlist-button clicks in daily totals, grouped by broad traffic source, referral category and device type. These website totals contain no visitor IDs, email addresses, stored IP addresses, full browser strings, private links or message content. We do not build visitor profiles or send these totals to advertising platforms.",
         "Our email service records information needed to send messages and handle delivery failures, complaints and opt-outs. If we introduce optional email open or click tracking that needs consent, we will explain it and obtain that consent before using it."
       ]
     },
@@ -61,6 +62,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       "heading": "Cookies and similar tools",
       "paragraphs": [
         "Cookies and similar tools can store or read information on your device. Tools strictly needed to provide a service you request, such as essential security or remembering your privacy choice, may work without separate consent.",
+        "Our aggregate website measurement uses no analytics cookies or device identifiers. You can turn it off using the controls below or Privacy choices in the footer. We also honour Do Not Track and Global Privacy Control signals. A preference cookie remembers your measurement choice for 180 days and contains no visitor ID.",
         "We ask before using optional analytics, advertising or similar tracking where consent is required. You can refuse those tools and still use the waitlist. If such tools are offered, the cookie information and controls explain their purpose, provider and duration, and let you change your choice. Using the website alone does not mean you agree to optional tracking."
       ]
     },
@@ -90,7 +92,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       "heading": "How long we keep information",
       "paragraphs": [
         "We keep a waitlist record while you remain on the list and it is needed to provide the updates you requested. If you leave, we close the waitlist, or the purpose ends, we delete or anonymise the record unless a limited part is still needed for a separate lawful purpose. A separate news subscription follows your own choice and does not continue simply because you once joined the waitlist.",
-        "We keep contact messages while handling the enquiry and any related follow-up. We keep technical records for the period needed to investigate faults or abuse and maintain security. We review these records and remove them when those purposes end.",
+        "Contact form messages expire after 30 days. We keep aggregate website totals for up to 90 days. We keep technical records for the period needed to investigate faults or abuse and maintain security. We review these records and remove them when those purposes end.",
         "We keep limited proof of consent, withdrawal or a complaint where needed to show how we handled your choices or resolve a dispute. We may keep a minimal opt-out record, such as an email address and the date of the opt-out, to avoid contacting you again. It is not used for promotional targeting.",
         "Where a law requires a record, we keep only the necessary details for that requirement. The purpose, any legal duty, an open dispute and whether the record still needs to identify you determine the period. Research, draw and payment records follow the separate periods or criteria stated in the relevant research notice and offer terms."
       ]
@@ -117,7 +119,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       ]
     }
   ],
-  "date": "Prepared 29 October 2026 · Coming-soon website and waitlist",
+  "date": "Updated 1 November 2026 · Coming-soon website and waitlist",
   "signoff": "SatinLore Team"
 };
 

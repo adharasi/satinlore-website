@@ -17,6 +17,35 @@ The repository is currently **public**. Source code belongs here; customer recor
 - Cloudflare D1 schema with append-only, tracked migrations, including `0006` for survey responses and delayed invitations.
 - Cloudflare Access authentication for the founder dashboard and admin APIs.
 
+## Admin workspace and website measurement (1 November 2026)
+
+The founder workspace has separate, individually authenticated pages:
+
+- `/admin`: daily page views, waitlist CTA clicks, retained signup/verification/questionnaire/contact activity, and source/referral/device/page breakdowns. Choose 7, 30 or 90 days and inspect individual daily bars.
+- `/admin/readers`: the existing email-merged waitlist/questionnaire CRM, stages, notes, consent fields and waitlist CSV exports.
+- `/admin/messages`: indexed contact enquiries, search, topic and status filters, oldest/newest sorting and pagination. Mark notes New, Read, In progress or Resolved; a status edit never changes consent or extends retention.
+- `/admin/email`: current sending flags, questionnaire queue counts, sender health checks and the existing deliberate confirmation/founder-alert batch actions. Completed SES credential setup instructions are no longer shown in the UI; operational setup documentation remains here.
+
+Each page checks the founder identity before loading private data. Keep Cloudflare Access protection on `/admin` and its descendants and `/api/admin/*` on all enabled hostnames. Shared public pages and the admin workspace now scale their typography, spacing, forms and layout across mobile, tablet, desktop and wide screens. All five homepage panels have their embedded series numbers removed.
+
+### What measurement records
+
+Migration `0007_site_metrics_and_contact_inbox.sql` adds aggregate counters and contact inbox status/indexes. Existing records and the verification/email trigger are preserved. Deploy through `pnpm build` then the existing `pnpm deploy`; the tracked migration runs before the new Worker is published. Do not replay old migrations or repoint the database.
+
+The Worker counts successful public HTML page loads. Homepage waitlist links send a small first-party CTA counter request. Only daily totals and allowlisted source/referral/device/page buckets are stored: no visitor IDs, raw IPs, full browser strings, arbitrary query values, private links or respondent data. Measurement failures do not block pages or signup. Metrics have independent short-lived abuse limits using the existing secret; they do not consume signup attempts. No extra runtime secret or third-party analytics account is needed.
+
+Traffic counters begin at this release; past page views cannot be recovered. Page views and clicks are actions, not unique visitors. Daily buckets use UTC. Signup counts deduplicate retained email addresses in the selected period; they are not a tracked conversion cohort. Questionnaire/contact figures also reflect retained records and may fall after withdrawal or expiry. Contact messages still expire after 30 days; daily traffic totals are kept for 90 days.
+
+Use `?utm_source=x`, `?utm_source=instagram`, `?utm_source=reddit`, `?utm_source=tiktok`, `?utm_source=youtube`, `?utm_source=linkedin` or `?utm_source=email` on public marketing links to identify the broad source. The existing waitlist acquisition field remains unchanged; analytics group unknown campaign values as Other.
+
+The privacy page and footer provide **Privacy choices**. Measurement respects Do Not Track, Global Privacy Control and a browser opt-out. A single preference cookie, `satinlore_measurement=off` or `on`, remembers an explicit choice for 180 days; it is not an analytics identifier. Confirmation and email-choice pages and all admin/API routes are excluded from traffic recording.
+
+### Check the release
+
+Run `pnpm test`, `pnpm typecheck` and `pnpm build`. Tests cover unauthenticated page/API denial, migration preservation, contact filtering/status/expiry, bounded measurement input, opt-outs, independent rate limits, aggregate reconciliation and the existing CRM/email flows. Apply migration `0007` locally before exercising the inbox. Use only synthetic fixtures in local UI tests.
+
+After deployment, sign in at `/admin`, open each sidebar page, and check date ranges, charts, reader filters/exports and inbox search/status edits. Visit a public page and a waitlist CTA, then refresh Overview; browser privacy signals or measurement opt-out intentionally exclude those visits. A controlled contact-form submission appears under Messages. Check Privacy choices in the same browser. Email operation buttons send real messages; test inbox delivery only deliberately with an inbox you control.
+
 ## Landing page design (31 October 2026)
 
 The homepage now explains the adult reading/device experience immediately, with five story panels covering automatic analysis, varied rhythms, reading pace, personal control and beta participation. Paid-testing and free-access CTAs lead to the existing waitlist. The signup section repeats the selected-tester offer (up to US$500 total for agreed completed tasks) and the questionnaire draw (a chance to win one of ten US$50 prizes). FAQs follow signup.

@@ -1,8 +1,36 @@
 "use client";
-import {useState} from "react";
-export default function EmailSetupPanel(){
- const[message,setMessage]=useState("");const[busy,setBusy]=useState(false);
- async function check(){setBusy(true);try{const r=await fetch("/api/admin/email-status");const d=await r.json() as {error?:string;configured?:boolean;sendingEnabled?:boolean;productionAccessEnabled?:boolean;identityVerified?:boolean};if(!r.ok)throw new Error(d.error);setMessage(d.configured&&d.sendingEnabled&&d.productionAccessEnabled&&d.identityVerified?"Email checks passed. The sender is ready.":"Email is not ready yet. Add the sender settings, verify the domain and get SES sending access.");}catch(e){setMessage(e instanceof Error?e.message:"Please try again.");}setBusy(false);}
- async function send(path:string){setBusy(true);try{const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({send:true})});const d=await r.json() as {error?:string;sent?:number;failed?:number};if(!r.ok)throw new Error(d.error);setMessage(`Sent: ${d.sent||0}. Failed: ${d.failed||0}. Use the button again for the next five.`);}catch(e){setMessage(e instanceof Error?e.message:"Please try again.");}setBusy(false);}
- return <section style={{border:"1px solid #d9c9be",borderRadius:12,padding:22,margin:"28px 0"}}><h2>Email setup</h2><p>Sign-ups are saved now. Once SES is ready, new readers get an email check link. A founder alert goes to team@satinlore.com. The reader welcome email is off for now.</p><p>Use Amazon SES with Satinlore &lt;team@satinlore.com&gt; as the verified sender in Stockholm (eu-north-1). Add SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY in Cloudflare → Workers & Pages → this Worker → Settings → Variables and Secrets (type: Secret). Never put keys in chat, GitHub source or this page. Non-secret settings come from wrangler.jsonc.</p><p>The app checks the sender and production access before sending. Queued alerts are sent when you use the button below. Sent means SES accepted the message; it does not prove inbox delivery. Repeat requests for an email do not send another founder alert.</p><div style={{display:"flex",gap:12,flexWrap:"wrap"}}><button className="button" disabled={busy} onClick={check}>Check email setup</button><button className="button" disabled={busy} onClick={()=>send('/api/admin/send-pending')}>Send checks to five waiting readers</button><button className="button" disabled={busy} onClick={()=>send('/api/admin/send-alerts')}>Send five queued founder alerts</button></div>{message&&<p role="status">{message}</p>}</section>;
+import { useState } from "react";
+type SendingStatus = { configured?: boolean; sendingEnabled?: boolean; productionAccessEnabled?: boolean; identityVerified?: boolean; error?: string };
+export default function EmailSetupPanel({ sendingEnabled, surveyEnabled, welcomeEnabled }: { sendingEnabled: boolean; surveyEnabled: boolean; welcomeEnabled: boolean }) {
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [status, setStatus] = useState<SendingStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function check() {
+    if (busy) return;
+    setBusy(true); setError(""); setMessage(""); setStatus(null);
+    try {
+      const result = await fetch("/api/admin/email-status", { cache: "no-store" });
+      const data = await result.json() as SendingStatus;
+      if (!result.ok) throw new Error(data.error || "The sending check could not finish.");
+      setStatus(data); setMessage(data.configured && data.sendingEnabled && data.productionAccessEnabled && data.identityVerified ? "Sender checks passed. Email is ready to send." : "One or more sender checks need attention. Review the status below.");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Please try again."); }
+    finally { setBusy(false); }
+  }
+  async function send(path: string) {
+    if (busy) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const result = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ send: true }) });
+      const data = await result.json() as { error?: string; sent?: number; failed?: number };
+      if (!result.ok) throw new Error(data.error || "The batch could not finish.");
+      setMessage(`Accepted: ${data.sent || 0}. Failed: ${data.failed || 0}. Use the button again for the next batch of up to five.`);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Please try again."); }
+    finally { setBusy(false); }
+  }
+  return <>
+    <section className="admin-card"><div className="admin-card-heading"><div><p className="admin-eyebrow">Current operations</p><h2>Email flows</h2></div><button type="button" className="button" disabled={busy} onClick={check}>{busy ? "Working…" : "Check sender status"}</button></div><ul className="admin-flow-list"><li><div><strong>Inbox confirmation & founder alerts</strong><span>New waitlist sign-ups use the existing confirmation flow.</span></div><span className={`admin-pill ${sendingEnabled ? "is-on" : ""}`}>{sendingEnabled ? "Enabled" : "Paused"}</span></li><li><div><strong>Questionnaire invitation</strong><span>Queued five minutes after verification; checked each minute.</span></div><span className={`admin-pill ${sendingEnabled && surveyEnabled ? "is-on" : ""}`}>{sendingEnabled && surveyEnabled ? "Enabled" : "Paused"}</span></li><li><div><strong>Immediate welcome email</strong><span>Separate from the delayed questionnaire invitation.</span></div><span className={`admin-pill ${welcomeEnabled ? "is-on" : ""}`}>{welcomeEnabled ? "Enabled" : "Off"}</span></li></ul>
+    {status && <dl className="admin-sender-checks">{[["Sender configuration", status.configured], ["Account sending", status.sendingEnabled], ["Production access", status.productionAccessEnabled], ["Sender verified", status.identityVerified]].map(([label, ready]) => <div key={String(label)}><dt>{label}</dt><dd>{ready ? "Passed" : "Needs attention"}</dd></div>)}</dl>}{message && <p className="admin-feedback" role="status">{message}</p>}{error && <p className="form-error" role="alert">{error}</p>}</section>
+    <section className="admin-card"><h2>Recover waiting messages</h2><p className="admin-muted">These buttons send a batch of up to five eligible messages. Use them only when you want to retry waiting confirmations or founder alerts.</p><div className="admin-action-row"><button type="button" className="button" disabled={busy} onClick={() => send("/api/admin/send-pending")}>Send waiting confirmations</button><button type="button" className="button" disabled={busy} onClick={() => send("/api/admin/send-alerts")}>Send queued founder alerts</button></div><p className="admin-note">Accepted means the email provider accepted the message; it does not prove inbox delivery. Questionnaire invitation retries run automatically. Founder-alert retries use the button above.</p></section>
+  </>;
 }

@@ -10,7 +10,7 @@ export default function PageFrame({ children, title }: { children: ReactNode; ti
       <h1>{title}</h1>{children}
     </main>
     <footer className="page-frame-footer site-shell">
-      <span>© {new Date().getFullYear()} Satinlore · Adults 18+</span><a href="/privacy">Privacy</a><a href="/contact">Contact</a><a href="/">Home</a>
+      <span>© {new Date().getFullYear()} Satinlore · Adults 18+</span><a href="/privacy">Privacy</a><a href="/privacy#measurement-choices">Privacy choices</a><a href="/contact">Contact</a><a href="/">Home</a>
     </footer>
   </div>;
 }

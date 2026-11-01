@@ -1,4 +1,4 @@
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const waitlist = sqliteTable("waitlist", {
   id: text("id").primaryKey(),
@@ -45,7 +45,27 @@ export const contactRequests = sqliteTable("contact_requests", {
   message: text("message").notNull(),
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
-});
+  status: text("status").notNull().default("new"),
+  updatedAt: integer("updated_at"),
+}, table => [
+  index("contact_requests_email_created_idx").on(table.email,table.createdAt),
+  index("contact_requests_status_created_idx").on(table.status,table.createdAt),
+  index("contact_requests_expires_created_idx").on(table.expiresAt,table.createdAt),
+]);
+
+export const websiteMetrics = sqliteTable("website_metrics", {
+  day: text("day").notNull(),
+  event: text("event").notNull(),
+  page: text("page").notNull(),
+  source: text("source").notNull(),
+  referrer: text("referrer").notNull(),
+  device: text("device").notNull(),
+  count: integer("count").notNull().default(0),
+  lastSeen: integer("last_seen").notNull(),
+}, table => [
+  primaryKey({columns:[table.day,table.event,table.page,table.source,table.referrer,table.device]}),
+  index("website_metrics_day_event_idx").on(table.day,table.event),
+]);
 
 export const surveyEmailJobs = sqliteTable("survey_email_jobs", {
   email: text("email").primaryKey(),

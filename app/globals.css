@@ -202,6 +202,26 @@ p { line-height: 1.7; }
 .privacy-notice section { scroll-margin-top: 2rem; }
 .privacy-notice section:first-of-type h2 { margin-top: 1.75rem; }
 
+/* Shared public pages scale with the viewport while keeping prose readable. */
+.page-frame { --body-size: clamp(1rem, .65rem + .55vw, 2.5rem); --small-size: clamp(.875rem, .65rem + .35vw, 1.75rem); font-size: var(--body-size); }
+.page-frame .content-page { width: min(88ch, calc(100% - var(--gutter) * 2)); max-width: none; }
+.page-frame .content-page h1 { font-size: clamp(2.3rem, 1.2rem + 2.8vw, 8rem); }
+.page-frame .content-page h2 { font-size: clamp(1.625rem, .85rem + 1.3vw, 4.1rem); }
+.page-frame .content-page h3 { font-size: clamp(1.4rem, 1rem + .7vw, 3rem); }
+.page-frame .page-frame-brand { font-size: clamp(1.75rem, 1.2rem + 1.05vw, 4rem); }
+.page-frame .page-frame-header { padding-block: clamp(1.25rem, 2vw, 4rem); }
+.page-frame .content-page :is(.field,.button,input,select,textarea,.check-field,.text-button,.notice,.form-error) { font-size: var(--body-size); }
+.page-frame .content-page :is(input:not([type=checkbox]),select,textarea) { min-height: 2.9em; }
+.page-frame .content-page :is(.form-fineprint,.form-hint,.check-field small,.private-link-box p) { font-size: var(--small-size); }
+.page-frame .content-page form { min-width: 0; }
+.page-frame .content-page :is(input,textarea,select) { max-width: 100%; }
+.page-frame .content-page input[type=checkbox] { width: 1.1em; height: 1.1em; flex-shrink: 0; accent-color: var(--plum); }
+.page-frame .content-page table { font-size: var(--small-size); }
+.measurement-choices { scroll-margin-top: 2rem; border: 1px solid var(--line); background: #f0e7de; padding: clamp(1rem, 2vw, 2.5rem); border-radius: 4px; margin-block: 1.5rem; }
+.measurement-choices .button { white-space: normal; text-align: left; }
+.landing-page .footer .measurement-link { grid-column: 1/-1; font-size: 11px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+@media(min-width:1800px) { .landing-page .footer .measurement-link { font-size: .75vw; } }
+
 @media (min-width: 1500px) {
   .preview-scene { --phone-scale: 1.15; }
   .orbit-one { width: 520px; height: 520px; }

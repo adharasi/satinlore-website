@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function Privacy() {
-  return <PrivacyNotice notice={websitePrivacyNotice} />;
+  return <PrivacyNotice notice={websitePrivacyNotice} measurementChoices />;
 }

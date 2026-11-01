@@ -13,6 +13,7 @@ test("the Worker cron calls the durable queue with production bindings and keeps
   const exported: { default?: { scheduled: (controller: unknown, env: unknown, ctx: unknown) => Promise<void> } } = {};
   new Function("require", "exports", source)((specifier: string) => {
     if (specifier === "vinext/server/fetch-handler") return { default: { fetch: async () => new Response("ok") } };
+    if (specifier === "../lib/site-analytics") return { trackPageView: async () => undefined };
     if (specifier === "../lib/data-retention") return { purgeExpiredRecords: async () => undefined };
     if (specifier === "../lib/survey-email-jobs") return {
       processSurveyEmailJobs: async (...args: unknown[]) => { calls.push(args); return { sent: 0 }; },

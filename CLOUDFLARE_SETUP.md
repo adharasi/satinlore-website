@@ -174,7 +174,7 @@ A useful rollout is to test first on a dedicated hostname such as `launch.satinl
 
 1. Confirm the SES identity and DKIM are verified and production access is approved in Stockholm (`eu-north-1`). Keep feedback forwarding and account suppression for bounces/complaints enabled.
 2. Change `EMAIL_ENABLED` to `"true"` in `wrangler.jsonc`, commit, rebuild and deploy. Keep `WELCOME_EMAIL_ENABLED="false"`. Dashboard-only edits to these variables will not survive a later source deployment.
-3. Open `/admin`, pass Cloudflare Access using the approved email, and click **Check email setup**.
+3. Open `/admin/email`, pass Cloudflare Access using the approved email, and click **Check sender status**.
 4. Require the message **Email checks passed. The sender is ready.** This checks configuration, AWS access, production status and sender verification. It does not prove delivery.
 5. In a separate private/incognito window, confirm the public launch page opens without admin login.
 6. Submit your own inbox, name and consent. Confirm both the verification email and the founder alert actually arrive, checking spam as well.
@@ -185,7 +185,7 @@ A useful rollout is to test first on a dedicated hostname such as `launch.satinl
 11. Check a logged-out browser cannot open the dashboard or export/API endpoints. Repeat against every reachable alternative hostname.
 12. Repeat the full signup on the final `https://satinlore.com` domain and verify email links point to it.
 
-Only after this test should you process old queued entries with **Send checks to five waiting readers** or **Send five queued founder alerts**. Inspect founder-alert failures and repeat batches deliberately; founder alerts have no unattended retry schedule. The separate survey invitation queue does have scheduled bounded retries. Review SES bounce/complaint alerts and mark affected CRM records Blocked. SES acceptance is not proof of inbox delivery.
+Only after this test should you process old queued entries with **Send waiting confirmations** or **Send queued founder alerts**. Inspect founder-alert failures and repeat batches deliberately; founder alerts have no unattended retry schedule. The separate survey invitation queue does have scheduled bounded retries. Review SES bounce/complaint alerts and mark affected CRM records Blocked. SES acceptance is not proof of inbox delivery.
 
 ## 9. Connect automatic GitHub deployments
 
@@ -209,7 +209,7 @@ Push the real D1 database ID and non-secret deployment settings to the repositor
 ## After launch
 
 - Keep the old deployment available until the data and link transition has been checked.
-- Use `/admin` as the primary CRM. Follow [Google Forms bridge setup](integrations/google-forms/SETUP.md) to record questionnaire responses and merge matching emails. Google Sheets remains an optional private CSV snapshot, with no live two-way sync.
+- Use `/admin/readers` as the primary CRM. Follow [Google Forms bridge setup](integrations/google-forms/SETUP.md) to record questionnaire responses and merge matching emails. Google Sheets remains an optional private CSV snapshot, with no live two-way sync.
 - Verify the one-minute cron appears under Worker triggers and check a new inbox verification receives the invitation after five minutes. Keep the old immediate welcome flow disabled.
 - Verify runtime defaults before every release. Re-run relevant tests and a real signup after changes to auth, email, forms or domains.
 - Keep feedback alerts under review and remove withdrawn readers from any exported working copies.
