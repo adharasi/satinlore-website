@@ -1,4 +1,4 @@
-// Owner-approved notices retrieved 30 October 2026; website measurement disclosure updated 1 November 2026.
+// Owner-approved notices retrieved 30 October 2026; website measurement and optional replay disclosure updated 2 November 2026.
 // Website: 02 — Website Privacy Notice (29 October 2026).
 // Research: 01 — Research Privacy Notice (29 October 2026).
 // Keep research notice links in questionnaires/forms, not in the site navigation.
@@ -49,6 +49,16 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       ]
     },
     {
+      "heading": "Optional session replays and heatmaps",
+      "paragraphs": [
+        "Only if you choose Allow replay, we record limited activity on the public homepage to find confusing parts and improve it. This includes pointer and click positions outside forms, scrolling, public menu and FAQ opening choices, page size, a broad device category and time that public sections are in view. You can say No thanks and still browse or join the waitlist.",
+        "A replay plays these actions back over a copy of our public page. It is not a camera, microphone or screen-video recording. It does not record what you type, form contents, story text, private links or activity on other pages, the reading app or other websites. Forms and other marked private areas are excluded from pointer and click recording and are masked in playback.",
+        "Each opted-in visit gets a random temporary session code. These records are pseudonymous, not anonymous. We do not store raw network addresses, full browser strings or contact details in replay records, connect them to waitlist, questionnaire or contact records, or use them for advertising or to infer private interests. Hosting and separate security controls may still process technical information as described above.",
+        "Heatmaps group the recorded visits to show where clicks happened, how far people scrolled and how long public sections were in view while the page was active. Time in view does not show where someone looked or why they left. Playback can differ from the original page if its size, layout or content changed.",
+        "Replay is off until you opt in. Privacy choices lets you change this at any time. Do Not Track, Global Privacy Control and turning off website measurement also stop new replay recording. Turning replay off stops collection immediately and asks us to remove the current visit's replay if this page still holds its temporary deletion credential. If that request cannot finish, the saved visit expires on its normal schedule. Earlier visits cannot be found through a browser preference alone."
+      ]
+    },
+    {
       "heading": "How and why we use information",
       "paragraphs": [
         "Waitlist and requested updates: we use your email and preferences to keep you on the waitlist and send the early-access or launch messages you chose. We rely on your consent for these updates. You can withdraw it at any time.",
@@ -56,14 +66,16 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
         "News and offers: where you separately opt in, we send SatinLore news or promotional offers. Our lawful basis is consent. Joining a survey, entering a draw or agreeing to sensitive research is not consent to marketing.",
         "Contact and support: we use your message to answer your enquiry and resolve problems. Our lawful basis is our legitimate interest in responding to people who contact us. If an enquiry asks us to take steps towards an agreement with you, we use the information needed for those steps.",
         "Security and compliance: we use necessary technical and administration records to detect abuse, fix faults, manage complaints and keep evidence of our actions. We rely on legitimate interests in protecting visitors and the service, or a legal obligation where a specific law requires us to keep or disclose information.",
-        "Website measurement: we use limited information to understand and improve the website. For tracking that requires consent, we rely on that consent. Where a specific legal exception permits measurement without consent, we explain it and provide the required way to object. We do not treat a measurement exception as permission for advertising."
+        "Aggregate website measurement: we use limited information to understand and improve the website. Where a specific legal exception permits this measurement without consent, we explain it and provide the required way to object. We do not treat a measurement exception as permission for advertising.",
+        "Optional session replay and heatmaps: we rely on your consent to record an individual homepage visit and use those records to improve the website. This is a separate choice from waitlist updates, marketing and research. We do not rely on an aggregate-measurement exception to record individual visits."
       ]
     },
     {
       "heading": "Cookies and similar tools",
       "paragraphs": [
         "Cookies and similar tools can store or read information on your device. Tools strictly needed to provide a service you request, such as essential security or remembering your privacy choice, may work without separate consent.",
-        "Our website measurement uses no analytics cookies or lasting visitor identifiers. You can turn it off using the controls below or Privacy choices in the footer. We also honour Do Not Track and Global Privacy Control signals. A preference cookie remembers your measurement choice for 180 days and contains no visitor ID.",
+        "Our aggregate website counters use no analytics cookies or lasting visitor identifiers. You can turn them off using the controls below or Privacy choices in the footer. We also honour Do Not Track and Global Privacy Control signals. A preference cookie remembers your measurement choice for 180 days and contains no visitor ID.",
+        "A separate preference cookie remembers whether you allow optional session replay for 180 days. It stores only your choice, not a session or visitor ID. The page keeps its recording's temporary write/deletion credential only in memory for the current visit. It is not saved in a browser cookie or browser storage.",
         "We ask before using optional analytics, advertising or similar tracking where consent is required. You can refuse those tools and still use the waitlist. If such tools are offered, the cookie information and controls explain their purpose, provider and duration, and let you change your choice. Using the website alone does not mean you agree to optional tracking."
       ]
     },
@@ -94,6 +106,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       "paragraphs": [
         "We keep a waitlist record while you remain on the list and it is needed to provide the updates you requested. If you leave, we close the waitlist, or the purpose ends, we delete or anonymise the record unless a limited part is still needed for a separate lawful purpose. A separate news subscription follows your own choice and does not continue simply because you once joined the waitlist.",
         "Contact form messages expire after 30 days. We keep aggregate website totals for up to 90 days. The protected daily measurement codes expire one minute after UTC midnight, allowing a brief grace period for requests still being processed, and are removed by the scheduled cleanup. They are retained for at most about 24 hours plus that grace and the next cleanup tick. We keep technical records for the period needed to investigate faults or abuse and maintain security. We review these records and remove them when those purposes end.",
+        "Optional replay records, their consent version and the heatmaps made from them are available for up to 30 days, then removed by the scheduled cleanup. A single replay is limited to ten minutes and a bounded number of actions. These limits can make a replay incomplete. We do not keep a separate lasting copy of a visit in a heatmap after its replay expires or is removed.",
         "We keep limited proof of consent, withdrawal or a complaint where needed to show how we handled your choices or resolve a dispute. We may keep a minimal opt-out record, such as an email address and the date of the opt-out, to avoid contacting you again. It is not used for promotional targeting.",
         "Where a law requires a record, we keep only the necessary details for that requirement. The purpose, any legal duty, an open dispute and whether the record still needs to identify you determine the period. Research, draw and payment records follow the separate periods or criteria stated in the relevant research notice and offer terms."
       ]
@@ -120,7 +133,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       ]
     }
   ],
-  "date": "Updated 1 November 2026 · Coming-soon website and waitlist",
+  "date": "Updated 2 November 2026 · Coming-soon website and waitlist",
   "signoff": "SatinLore Team"
 };
 

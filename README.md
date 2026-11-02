@@ -22,6 +22,7 @@ The repository is currently **public**. Source code belongs here; customer recor
 The founder workspace has separate, individually authenticated pages:
 
 - `/admin`: daily page views, estimated daily unique visitors and page views, waitlist CTA clicks, retained signup/verification/questionnaire/contact activity, and source/referral/device/page breakdowns. Choose 7, 30 or 90 days and inspect individual daily bars.
+- `/admin/experience`: opted-in homepage session replays and heatmaps, with date/device filters and a masked reconstruction of the public page. See [website experience measurement](docs/website-experience.md).
 - `/admin/readers`: the existing email-merged waitlist/questionnaire CRM, stages, notes, consent fields and waitlist CSV exports.
 - `/admin/messages`: indexed contact enquiries, search, topic and status filters, oldest/newest sorting and pagination. Mark notes New, Read, In progress or Resolved; a status edit never changes consent or extends retention.
 - `/admin/email`: current sending flags, questionnaire queue counts, sender health checks and the existing deliberate confirmation/founder-alert batch actions. Completed SES credential setup instructions are no longer shown in the UI; operational setup documentation remains here.
@@ -47,6 +48,16 @@ The privacy page and footer provide **Privacy choices**. Measurement respects Do
 Run `pnpm test`, `pnpm typecheck` and `pnpm build`. Tests cover unauthenticated page/API denial, migration preservation, contact filtering/status/expiry, bounded measurement input, opt-outs, independent rate limits, aggregate reconciliation, real-SQLite atomic dedupe/UTC rotation/expiry tests and the existing CRM/email flows. Apply migrations through `0008` locally before exercising unique views and the inbox. Use only synthetic fixtures in local UI tests.
 
 After deployment, sign in at `/admin`, open each sidebar page, and check date ranges, charts, reader filters/exports and inbox search/status edits. Visit a public page and a waitlist CTA, then refresh Overview; browser privacy signals or measurement opt-out intentionally exclude those visits. For a unique-view check, load the homepage twice from one browser/network: page views rise twice and the current UTC-day site/page unique estimates rise once. Visit Privacy: page views and that page’s unique estimate rise, while the site estimate stays unchanged. Repeating on another UTC day adds a new daily estimate. Do not use a signed-in Cloudflare Access request to test public measurement, as those requests are excluded. A controlled contact-form submission appears under Messages. Check Privacy choices in the same browser. Email operation buttons send real messages; test inbox delivery only deliberately with an inbox you control.
+
+## Optional homepage replays and heatmaps (2 November 2026)
+
+The **Experience** section at `/admin/experience` records only visitors who separately allow session replay. It does not recover past visits or record the app. The consent choice is separate from aggregate page/unique counters, waitlist consent, news and research. **No thanks** leaves browsing and signup available. Privacy choices can stop recording; Do Not Track, Global Privacy Control and the existing measurement opt-out also take precedence.
+
+This is first-party interaction replay, not an MP4, camera/microphone capture or a full screen recording. It replays bounded numeric pointer/click/scroll actions and visible-section time over a static public homepage. It records no DOM snapshots, input values, form contents, story text, full URLs, raw network addresses, full browser strings or CRM/contact identifiers. Forms are excluded and masked. A random session identifier and a hash-only write credential prevent one session from changing another; the browser keeps its credential only in page memory. The 180-day replay preference cookie contains only `on` or `off`, not an identifier.
+
+Migration `0009_website_experience.sql` adds replay sessions and event batches in the existing `DB`; it does not change waitlist, questionnaire or SES data. Each opted-in session has a ten-minute/3,000-event bound and expires after 30 days. Heatmaps are calculated from retained session events, so removing or expiring a session also removes its contribution. Replays and heatmaps show a consented sample, not every visitor or a proven explanation of a person's intent. Time in view is not eye tracking; responsive layout and document changes can affect playback accuracy.
+
+See [the implementation and test guide](docs/website-experience.md) for the data contract, retention and testing. `pnpm deploy` applies the new tracked migration before publishing the Worker; no third-party analytics account, extra tracking script or new runtime secret is required. Code publication, migration completion and signed-in live acceptance must each be verified from their actual results.
 
 ## Landing page design (31 October 2026)
 

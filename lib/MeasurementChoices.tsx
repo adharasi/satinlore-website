@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { measurementDisabled } from "@/lib/SiteMetrics";
+import WebsiteExperience from "@/lib/WebsiteExperience";
+import {PRIVACY_EVENT} from "@/lib/experience-client";
 
 export default function MeasurementChoices() {
   const [off,setOff] = useState(false);
@@ -16,7 +18,7 @@ export default function MeasurementChoices() {
     const next = !off;
     document.cookie = `satinlore_measurement=${next ? "off" : "on"}; Path=/; SameSite=Lax; Max-Age=15552000${location.protocol === "https:" ? "; Secure" : ""}`;
     const applied = document.cookie.split(";").some(item => item.trim() === `satinlore_measurement=${next ? "off" : "on"}`);
-    if (applied) setOff(next);
+    if (applied) { setOff(next); window.dispatchEvent(new Event(PRIVACY_EVENT)); }
     else setMessage("Your browser could not save this choice. You can also enable Do Not Track or Global Privacy Control in your browser.");
   }
   const [message,setMessage] = useState("");
@@ -25,5 +27,6 @@ export default function MeasurementChoices() {
     {!browserOff && <button className="button" type="button" onClick={change} disabled={!ready}>{off ? "Allow aggregate measurement" : "Turn off website measurement"}</button>}
     <p className="form-hint">This choice applies to this browser. A preference cookie remembers it for 180 days; it contains no visitor ID. Turning measurement off stops new counts from this browser. Protected daily codes expire just after UTC midnight; the daily totals already counted remain.</p>
     {message && <p role="alert">{message}</p>}
+    <WebsiteExperience compact />
   </aside>;
 }

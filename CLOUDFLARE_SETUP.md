@@ -206,6 +206,16 @@ The Worker name in Cloudflare must match the name in `wrangler.jsonc`. Disable a
 
 Push the real D1 database ID and non-secret deployment settings to the repository. Keep `workers_dev=false` after the custom-domain handoff and `preview_urls=false` unless deliberately enabling a separate safe environment. Do not commit runtime secrets. The `pnpm deploy` script applies only unapplied tracked migrations before publishing the Worker. Its build token must have D1 write access. Review migration changes before merging to `main`; keep arbitrary branch builds disabled so they cannot migrate production. Never replace this with replaying old SQL files individually.
 
+## Homepage replay and heatmap release
+
+The later website-experience release adds append-only migration `0009_website_experience.sql` to the existing D1 `DB`, plus `/admin/experience` and its private preview/API routes. The deployment command remains `pnpm deploy`: it applies unapplied migrations and then publishes the Worker. It needs the existing D1 migration/deployment permissions and `ABUSE_SALT`; it adds no analytics provider or runtime secret. Do not change the D1 database ID, replay prior migrations, enable branch previews against production or alter SES/cron settings for this feature.
+
+Keep Cloudflare Access protection on `/admin` and all descendants, including `/admin/experience/preview`, and `/api/admin/*` on every reachable hostname. The app also verifies the founder JWT before returning private replay data or the preview. The preview is a static, masked marketing page in a sandboxed frame; its URL must never become a public route or an authentication bypass.
+
+Before release, run `pnpm test`, `pnpm typecheck` and `pnpm build`. Use only synthetic local sessions to test consent, masking, replay and deletion. After the build and migration succeed, open a public homepage in a separate visitor browser. Verify no replay requests occur before a choice, after **No thanks**, or with a privacy signal. Separately allow replay, click and scroll through public sections, then inspect Experience from the authenticated founder browser. Enter a synthetic marker in the waitlist form without submitting: it must never appear in stored replay events or playback. Stop recording through Privacy choices and check the result without claiming deletion if the request failed. Individual replays expire after 30 days; heatmaps use only retained sessions. See [the complete test guide](docs/website-experience.md).
+
+This release does not enable cameras, microphones, literal video files, cross-site tracking, app-story recording, or CRM-linked visitor profiles. It keeps aggregate counters and their own opt-out separate. Automatic cleanup uses the existing scheduled Worker flow; verify that the one-minute cron remains registered after deployment.
+
 ## After launch
 
 - Keep the old deployment available until the data and link transition has been checked.

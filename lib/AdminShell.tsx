@@ -4,6 +4,7 @@ import "@/app/admin/admin.css";
 
 const sections = [
   { href: "/admin", label: "Overview", icon: "◫", detail: "Traffic & activity" },
+  { href: "/admin/experience", label: "Experience", icon: "◉", detail: "Heatmaps & replays" },
   { href: "/admin/readers", label: "Readers", icon: "◎", detail: "Waitlist & questionnaire" },
   { href: "/admin/messages", label: "Messages", icon: "✉", detail: "Contact & privacy inbox" },
   { href: "/admin/email", label: "Email", icon: "↗", detail: "Delivery & queues" },

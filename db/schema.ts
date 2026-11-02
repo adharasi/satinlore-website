@@ -1,4 +1,5 @@
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const waitlist = sqliteTable("waitlist", {
   id: text("id").primaryKey(),
@@ -108,3 +109,43 @@ export const emailSuppressions = sqliteTable("email_suppressions", {
   purpose: text("purpose").notNull(),
   suppressedAt: integer("suppressed_at").notNull(),
 }, table => [primaryKey({columns:[table.emailHash,table.purpose]})]);
+
+
+// Opt-in public-homepage activity. There are no contact, form-content or network-identity columns.
+export const websiteExperienceSessions = sqliteTable("website_experience_sessions", {
+  id: text("id").primaryKey().notNull(),
+  tokenHash: text("token_hash").notNull(),
+  page: text("page").notNull(),
+  layout: text("layout").notNull(),
+  consentVersion: text("consent_version").notNull(),
+  consentAt: integer("consent_at").notNull(),
+  startedAt: integer("started_at").notNull(),
+  lastSeenAt: integer("last_seen_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  viewportWidth: integer("viewport_width").notNull(),
+  viewportHeight: integer("viewport_height").notNull(),
+  documentHeight: integer("document_height").notNull(),
+  device: text("device").notNull(),
+  durationMs: integer("duration_ms").notNull().default(0),
+  visibleMs: integer("visible_ms").notNull().default(0),
+  maxScroll: integer("max_scroll").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  eventCount: integer("event_count").notNull().default(0),
+  nextSeq: integer("next_seq").notNull().default(0),
+  lastT: integer("last_t").notNull().default(0),
+  lastVisible: integer("last_visible").notNull().default(1),
+}, table => [
+  index("website_experience_sessions_expiry_idx").on(table.expiresAt),
+  index("website_experience_sessions_started_device_idx").on(table.startedAt, table.device, table.layout),
+  check("website_experience_page_check", sql`${table.page}='/'`),
+  check("website_experience_device_check", sql`${table.device} IN ('mobile','tablet','desktop')`),
+  check("website_experience_visibility_check", sql`${table.lastVisible} IN (0,1)`),
+]);
+export const websiteExperienceBatches = sqliteTable("website_experience_batches", {
+  sessionId: text("session_id").notNull().references(() => websiteExperienceSessions.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  events: text("events").notNull(),
+  eventCount: integer("event_count").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [primaryKey({ columns: [table.sessionId, table.seq] })]);
