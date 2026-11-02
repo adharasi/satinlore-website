@@ -36,7 +36,7 @@ function lifecycle() {
 }
 
 /** Executes the real browser binding with a minimal DOM boundary, not a browser/layout simulation. */
-function browserBinding({ cookie = "", path = "/", dnt = "", gpc = false } = {}) {
+function browserBinding({ cookie = "", path = "/", dnt = "", gpc = false, admissionDelayMs = 0 } = {}) {
   type Callback = (event: Record<string, unknown>) => void;
   const docEvents = new Map<string, Set<Callback>>(), winEvents = new Map<string, Set<Callback>>();
   const intervals = new Map<number, () => void>(); let clock = 0, nextTimer = 0, observerCount = 0;
@@ -81,7 +81,7 @@ function browserBinding({ cookie = "", path = "/", dnt = "", gpc = false } = {})
     performance: { now: () => clock }, AbortSignal,
     setInterval: (callback: () => void) => { intervals.set(++nextTimer, callback); return nextTimer; }, clearInterval: (id: number) => intervals.delete(id),
     ResizeObserver: class { constructor(_callback: () => void) { observerCount++; } observe() {} disconnect() {} },
-    fetch: async (_url: string, options: { body: string }) => { const body = JSON.parse(options.body); requests.push(body); return { ok: true, json: async () => body.action === "start" ? admission() : body.action === "append" ? { ok: true, accepted: true, seq: body.seq } : { ok: true, withdrawn: true } }; },
+    fetch: async (_url: string, options: { body: string }) => { const body = JSON.parse(options.body); requests.push(body); if (body.action === "start") clock += admissionDelayMs; return { ok: true, json: async () => body.action === "start" ? admission() : body.action === "append" ? { ok: true, accepted: true, seq: body.seq } : { ok: true, withdrawn: true } }; },
   });
   const recorder = exports.createBrowserExperienceRecorder!();
   const dispatch = (map: Map<string, Set<Callback>>, kind: string, event: Record<string, unknown>) => { for (const callback of map.get(kind) || []) callback(event); };
@@ -244,5 +244,24 @@ test("effective visibility changes include privacy-dialog suppression without co
   assert.equal(events.filter(event => event.k === "pointer").length, 0);
   const views = events.filter((event): event is Extract<ExperienceEvent, { k: "view" }> => event.k === "view");
   assert.ok(views.every(event => event.t >= 7000));
+  await app.recorder.stop();
+});
+
+
+test("admission starts the timeline at zero and records an existing halfway scroll without a new scroll event", async () => {
+  const app = browserBinding({cookie: "satinlore_replay=on", admissionDelayMs: 4000});
+  app.window.scrollY = 2550;
+  assert.equal(await app.recorder.start(), true);
+  await app.recorder.flush();
+  const events = app.requests.filter(body => body.action === "append").flatMap(body => body.events as ExperienceEvent[]);
+  assert.ok(events.some(event => event.k === "scroll" && event.y === 500), "The initial page position is captured before the visitor scrolls again.");
+  assert.ok(events.some(event => event.k === "viewport"));
+  assert.ok(events.some(event => event.k === "visibility"));
+  assert.ok(events.every(event => event.t === 0), "The admission network wait is excluded from all initial replay events.");
+  assert.equal(events.filter(event => event.k === "scroll").length, 1);
+  app.time(4100); app.window.scrollY = 3060; app.win("scroll", {});
+  await app.recorder.flush();
+  const later = app.requests.filter(body => body.action === "append").flatMap(body => body.events as ExperienceEvent[]);
+  assert.ok(later.some(event => event.k === "scroll" && event.y === 600 && event.t === 100));
   await app.recorder.stop();
 });

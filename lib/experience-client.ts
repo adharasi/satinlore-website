@@ -98,21 +98,22 @@ export class ExperienceRecorder {
     if (this.active || this.state === "starting" || !this.env.allowed()) return false;
     const epoch = ++this.epoch;
     this.setState("starting");
-    this.startedAt = this.env.now(); this.lastViewAt = this.startedAt;
     try {
       const reply = await this.env.request({action: "start", v: 1, layout: EXPERIENCE_LAYOUT,
         viewport: this.env.viewport(), consent: true}) as SessionReply;
       if (!reply || reply.ok !== true || !UUID.test(reply.sid) || typeof reply.token !== "string" || !/^[a-f0-9]{32,128}$/i.test(reply.token)) throw new Error();
       const credentials = {sid: reply.sid, token: reply.token};
       if (epoch !== this.epoch || !this.env.allowed()) { await this.erase(credentials); return false; }
+      // Capture starts after admission: network wait is not time spent viewing a replay.
+      this.startedAt = this.env.now(); this.lastViewAt = this.startedAt;
       this.credentials = credentials; this.active = true;
       this.captured = 0; this.sequence = 0; this.queue = []; this.pending = null;
       this.visibleState = this.env.visible();
       this.push({k: "visibility", visible: this.visibleState});
+      this.push({k: "viewport", ...this.env.viewport()});
       this.detach = this.env.listen(event => this.push(event), () => { void this.flush(true); });
       this.timer = this.env.interval(() => this.tick(), 1000);
       this.setState("recording");
-      this.push({k: "viewport", ...this.env.viewport()});
       return true;
     } catch {
       if (epoch === this.epoch) this.setState("unavailable");
@@ -232,6 +233,9 @@ export function createBrowserExperienceRecorder(onState?: (state: ExperienceStat
       document.addEventListener("visibilitychange", visibility); window.addEventListener("pagehide", leaving);
       document.addEventListener("toggle", faq, true); window.addEventListener("satinlore:replay-ui", menu);
       const observer = typeof ResizeObserver === "function" ? new ResizeObserver(resize) : null; observer?.observe(document.body);
+      // Snapshot position without consuming the first real scroll event's throttle slot.
+      const initialSize = viewport();
+      push({k: "scroll", y: normalised(window.scrollY, initialSize.dh - initialSize.h)});
       for (const details of document.querySelectorAll<HTMLDetailsElement>("details[data-experience-faq]")) faq({target: details} as unknown as Event);
       push({k: "toggle", target: "menu", open: document.getElementById("nav")?.classList.contains("is-open") === true});
       return () => {
