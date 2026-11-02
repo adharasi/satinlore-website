@@ -1,20 +1,29 @@
 "use client";
 
 import {useEffect, useRef, useState} from "react";
-import {browserPrivacyOff, createBrowserExperienceRecorder, OPEN_PRIVACY_EVENT, PRIVACY_EVENT,
-  replayChoice, replayPreferenceCookie, type ExperienceRecorder, type ExperienceState} from "@/lib/experience-client";
+import {createBrowserExperienceRecorder, OPEN_PRIVACY_EVENT, PRIVACY_EVENT,
+  type ExperienceRecorder, type ExperienceState} from "@/lib/experience-client";
+import {browserPrivacySignalOff, COOKIE_CATEGORIES, COOKIE_CHOICE_SYNC_EVENT, cookieConsentCookies, readCookieConsent} from "@/lib/cookie-consent.mjs";
+import {setPageAnalyticsAllowed} from "@/lib/SiteMetrics";
 import "./website-experience.css";
 
-/** Separate opt-in for retained interaction replays, independent of waitlist/research consent. */
+type Choices = {analytics: boolean; experience: boolean};
+const NONE: Choices = {analytics: false, experience: false};
+const ALL: Choices = {analytics: true, experience: true};
+
+/** Shared category choices; never grant undisclosed purposes through an old preference. */
 export default function WebsiteExperience({compact = false}: {compact?: boolean}) {
-  const [choice, setChoice] = useState<"on" | "off" | null>(null);
+  const [choice, setChoice] = useState<Choices | null>(null);
+  const [draft, setDraft] = useState<Choices>(NONE);
   const [blocked, setBlocked] = useState(false);
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [state, setState] = useState<ExperienceState>("off");
   const [message, setMessage] = useState("");
   const recorder = useRef<ExperienceRecorder | null>(null);
   const mounted = useRef(false);
+  const localOff = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
 
@@ -23,12 +32,21 @@ export default function WebsiteExperience({compact = false}: {compact?: boolean}
     const engine = createBrowserExperienceRecorder(value => { if (mounted.current) setState(value); });
     recorder.current = engine;
     const sync = () => {
-      const next = replayChoice(document.cookie), off = browserPrivacyOff(navigator, document.cookie);
-      setChoice(next); setBlocked(off); setReady(true);
-      if (next === "on" && !off && location.pathname === "/") void engine.start();
+      const next = readCookieConsent(document.cookie), off = browserPrivacySignalOff(navigator);
+      setChoice(next); setDraft(next ? {analytics: next.analytics, experience: next.experience} : NONE);
+      setBlocked(off); setReady(true);
+      setPageAnalyticsAllowed(!!next?.analytics && !off && !localOff.current);
+      // Local notification does not rebroadcast, avoiding a cross-tab event loop.
+      window.dispatchEvent(new Event(COOKIE_CHOICE_SYNC_EVENT));
+      if (next?.experience && !off && !localOff.current && location.pathname === "/") void engine.start();
       else if (engine.snapshot().canWithdraw) void engine.stop({withdraw: true});
     };
-    const show = () => { opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setOpen(true); };
+    const show = () => {
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const saved = readCookieConsent(document.cookie);
+      setDraft(saved ? {analytics: saved.analytics, experience: saved.experience} : NONE);
+      setOpen(true);
+    };
     const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("satinlore-privacy-choice") : null;
     const changed = () => { sync(); channel?.postMessage("changed"); };
     if (channel) channel.onmessage = () => sync();
@@ -48,44 +66,75 @@ export default function WebsiteExperience({compact = false}: {compact?: boolean}
   }, [open]);
 
   const close = () => { setOpen(false); opener.current?.focus({preventScroll: true}); };
-  async function choose(next: "on" | "off") {
-    // Stop locally before any network deletion, so withdrawal cannot leave capture active.
-    const removal = next === "off" ? recorder.current?.stop({withdraw: true}) : null;
-    document.cookie = replayPreferenceCookie(next, location.protocol === "https:");
-    if (replayChoice(document.cookie) !== next) {
-      setMessage("Your browser could not save this choice. Optional replay stays off for this visit.");
-      if (next === "on") await recorder.current?.stop({withdraw: true});
-      return;
-    }
-    setChoice(next); setMessage("");
-    window.dispatchEvent(new Event(PRIVACY_EVENT));
-    if (next === "off") {
-      const removed = await removal;
-      if (mounted.current) {
-        setMessage(removed === false ? "Replay is off. We could not confirm removal of this visit’s earlier replay. Stored visits expire after 30 days." :
-          "Replay is off. Any earlier visits that cannot be linked to this visit still expire after 30 days.");
-        if (removed === false) { setOpen(true); return; }
+  const manage = () => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDraft(choice ? {...choice} : NONE); setOpen(true);
+  };
+  async function choose(next: Choices) {
+    if (busy) return;
+    setBusy(true); setMessage("");
+    const effective = browserPrivacySignalOff(navigator) ? NONE : next;
+    if (!effective.analytics) setPageAnalyticsAllowed(false);
+    // Stop locally before any network request so refusing can never leave capture active.
+    const removal = !effective.experience ? recorder.current?.stop({withdraw: true}) : null;
+    try {
+      for (const cookie of cookieConsentCookies(effective, location.protocol === "https:")) document.cookie = cookie;
+      const saved = readCookieConsent(document.cookie);
+      if (!saved || saved.analytics !== effective.analytics || saved.experience !== effective.experience) {
+        localOff.current = true;
+        setPageAnalyticsAllowed(false);
+        await recorder.current?.stop({withdraw: true});
+        setMessage("Your browser could not save this choice. Optional recording is stopped on this page. You can also use your browser’s privacy settings.");
+        setOpen(true); return;
       }
-    }
-    close();
+      localOff.current = false; setPageAnalyticsAllowed(effective.analytics); setChoice(effective); setDraft(effective);
+      const removed = await removal;
+      window.dispatchEvent(new Event(PRIVACY_EVENT));
+      if (!effective.experience && removed === false) {
+        setMessage("Non-essential choices are saved and recording is off. Removal of this visit’s earlier recording could not be confirmed. Stored visits expire after 30 days.");
+        setOpen(true); return;
+      }
+      close();
+    } catch {
+      localOff.current = true;
+      setPageAnalyticsAllowed(false);
+      await recorder.current?.stop({withdraw: true});
+      setMessage("Your browser could not save this choice. Optional recording is stopped on this page. Please try again or use your browser’s privacy settings.");
+      setOpen(true);
+    } finally { if (mounted.current) setBusy(false); }
   }
-  const controls = <>
-    <p className="experience-purpose">Allow us to replay clicks, scrolling and pointer movements on this homepage to improve it? We keep these visits for up to 30 days.</p>
-    <p className="experience-detail">This is an interaction replay, not a screen video. We do not record what you type, form contents, camera or sound. Your choice does not affect joining the waitlist.</p>
-    {blocked && <p className="experience-privacy-status" role="status">Replay is off because website measurement is disabled or your browser sends a privacy signal.</p>}
+  const actions = <div className="experience-choice-actions">
+    <button className="experience-choice" type="button" disabled={busy} onClick={() => void choose(NONE)}>Reject non-essential cookies</button>
+    <button className="experience-choice" type="button" disabled={busy || blocked} onClick={() => void choose(ALL)}>Accept all cookies</button>
+  </div>;
+  const notice = <>
+    {blocked && <p className="experience-privacy-status" role="status">Your browser sends a privacy signal. Optional analytics and recordings stay off.</p>}
     {message && <p className="experience-privacy-status" role="status">{message}</p>}
-    {choice === "on" && state === "unavailable" && <p className="experience-privacy-status" role="status">Optional replay is unavailable for this visit. You can use the website as usual.</p>}
-    <div className="experience-choice-actions"><button className="experience-choice" type="button" onClick={() => void choose("off")}>No thanks</button><button className="experience-choice" type="button" disabled={blocked} onClick={() => void choose("on")}>Allow replay</button></div>
-    <p className="experience-detail">You can change your mind using Privacy choices. A preference cookie remembers the choice for 180 days and contains no visitor ID. <a href="/privacy#measurement-choices">More privacy choices</a></p>
+    {choice?.experience && state === "unavailable" && <p className="experience-privacy-status" role="status">Website recording is unavailable for this visit. You can use the website as usual.</p>}
   </>;
   return <div className="website-experience" data-experience-mask>
-    {compact ? <section className="experience-inline" aria-label="Optional interaction replay">
-      <h3>Optional interaction replay</h3><p role="status">{!ready ? "Loading your replay choice…" : blocked ? "Replay is off because of your privacy choice or browser signal." : choice === "on" ? "Optional homepage replay is allowed in this browser." : "Optional replay is off."}</p>
-      <button className="button" type="button" onClick={() => { opener.current = document.activeElement as HTMLElement; setOpen(true); }} disabled={!ready}>Manage replay choice</button>
-    </section> : ready && choice === null && !blocked && !open ? <aside className="experience-banner" data-experience-consent-open="true" aria-label="Optional website replay"><h2>Help us improve this page?</h2>{controls}</aside> : null}
+    {compact ? <section className="experience-inline" aria-label="Cookie settings">
+      <h3>Cookie settings</h3><p role="status">{!ready ? "Loading your cookie choices…" : blocked ? "Optional cookies and recordings are off because of your browser’s privacy signal." : !choice ? "Only essential tools are allowed until you choose." : !choice.analytics && !choice.experience ? "Non-essential cookies and recordings are rejected." : `Analytics ${choice.analytics ? "allowed" : "off"}. Website recordings ${choice.experience ? "allowed" : "off"}.`}</p>
+      <button className="button" type="button" onClick={manage} disabled={!ready}>Manage cookie choices</button>
+    </section> : ready && choice === null && !open ? <aside className="experience-banner" data-experience-consent-open="true" aria-label="Cookies on SatinLore">
+      <h2>Cookies on SatinLore</h2>
+      <p className="experience-purpose">We use essential cookies to run the website. With your permission, analytics and website recordings help us improve it.</p>
+      <p className="experience-detail">You can accept all cookies, reject non-essential cookies or choose below. Your choice does not affect joining the waitlist.</p>
+      {notice}{actions}<button className="experience-manage" type="button" onClick={manage} disabled={busy}>Manage choices</button>
+      <p className="experience-detail"><a href="/privacy#measurement-choices">Cookie and privacy information</a></p>
+    </aside> : null}
     <dialog className="experience-dialog" ref={dialog} onCancel={event => { event.preventDefault(); close(); }} onClose={() => setOpen(false)} data-experience-consent-open={open ? "true" : undefined} aria-labelledby="experience-choices-heading">
-      <header><h2 id="experience-choices-heading">Your replay choice</h2><button className="experience-close" type="button" aria-label="Close privacy choices" onClick={close}>×</button></header>
-      {controls}<button className="experience-done" type="button" onClick={close}>Close</button>
+      <header><h2 id="experience-choices-heading">Cookie settings</h2><button className="experience-close" type="button" aria-label="Close cookie settings" onClick={close}>×</button></header>
+      <p className="experience-purpose">Choose which optional tools we may use. Essential tools keep the site secure and remember your choices.</p>
+      {notice}
+      <div className="cookie-categories">{COOKIE_CATEGORIES.map(category => <section className="cookie-category" key={category.id}>
+        <label className="cookie-category-toggle"><span>{category.label}</span><input type="checkbox" checked={category.id === "essential" || draft[category.id as keyof Choices]} disabled={!category.optional || busy || blocked} onChange={event => { const checked = event.currentTarget.checked; if (category.id === "analytics" || category.id === "experience") setDraft(previous => ({...previous, [category.id]: checked})); }} aria-label={category.optional ? `Allow ${category.label.toLowerCase()}` : "Essential cookies, always on"} /></label>
+        {!category.optional && <span className="cookie-category-required">Always on</span>}
+        <p>{category.description}</p><p className="experience-detail">Provider: {category.provider}. {category.duration}</p>
+      </section>)}</div>
+      <p className="experience-detail">Website recordings reconstruct the public homepage as it appeared and changed. Typed text, form contents and private areas are masked. They do not capture other windows, camera or sound. Recording is separate from waitlist, news and research consent.</p>
+      <p className="experience-detail">Your choice is remembered for 180 days without a visitor ID. You can change it using Privacy choices. New purposes are explained before they are enabled. <a href="/privacy#measurement-choices">Read the privacy information</a></p>
+      {actions}<div className="experience-settings-actions"><button className="experience-choice" type="button" disabled={busy} onClick={() => void choose(draft)}>Save my choices</button><button className="experience-done" type="button" onClick={close}>Close</button></div>
     </dialog>
     {compact && message && <p className="experience-message" role="status">{message}</p>}
   </div>;

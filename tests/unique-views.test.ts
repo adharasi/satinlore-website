@@ -10,7 +10,7 @@ const salt = "synthetic-test-key-never-used-in-production";
 const ip = "192.0.2.10";
 const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0.7390.122 Safari/537.36";
 function page(path = "/", headers: Record<string, string> = {}) {
-  return new Request("https://satinlore.com" + path, { headers: { "User-Agent": ua, "CF-Connecting-IP": ip, ...headers } });
+  return new Request("https://satinlore.com" + path, { headers: { "User-Agent": ua, "CF-Connecting-IP": ip, Cookie: "satinlore_consent=v2.1.1", ...headers } });
 }
 function html() { return new Response("Synthetic page", { headers: { "Content-Type": "text/html" } }); }
 function fixture() {

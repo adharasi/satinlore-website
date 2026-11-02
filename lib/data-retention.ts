@@ -13,6 +13,9 @@ export async function purgeExpiredRecords(db: D1Database, now = Date.now()) {
   // Optional analytics must not block the existing email/CRM cleanup if its migration
   // is temporarily unavailable. Expired sessions are excluded from every read immediately.
   try {
+    await db.prepare("DELETE FROM website_visual_batches WHERE session_id IN (SELECT id FROM website_experience_sessions WHERE expires_at<=?)").bind(now).run();
+  } catch { /* A missing visual migration cannot block existing cleanup. */ }
+  try {
     await db.batch([
       db.prepare("DELETE FROM website_experience_batches WHERE session_id IN (SELECT id FROM website_experience_sessions WHERE expires_at<=?)").bind(now),
       db.prepare("DELETE FROM website_experience_sessions WHERE expires_at<=?").bind(now),

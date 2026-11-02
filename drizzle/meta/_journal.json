@@ -71,6 +71,13 @@
       "when": 1793586279874,
       "tag": "0009_website_experience",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793656108876,
+      "tag": "0010_visual_website_replay",
+      "breakpoints": true
     }
   ]
 }

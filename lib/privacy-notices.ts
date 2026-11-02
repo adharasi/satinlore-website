@@ -51,11 +51,11 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
     {
       "heading": "Optional session replays and heatmaps",
       "paragraphs": [
-        "Only if you choose Allow replay, we record limited activity on the public homepage to find confusing parts and improve it. This includes pointer and click positions outside forms, scrolling, public menu and FAQ opening choices, page size, a broad device category and time that public sections are in view. You can say No thanks and still browse or join the waitlist.",
-        "A replay plays these actions back over a copy of our public page. It is not a camera, microphone or screen-video recording. It does not record what you type, form contents, story text, private links or activity on other pages, the reading app or other websites. Forms and other marked private areas are excluded from pointer and click recording and are masked in playback.",
+        "Only if you accept website recordings in Cookie settings, we record how the public homepage appeared, changed and was used so we can find confusing parts and improve it. This includes a visual copy of public page content and layout, pointer and click positions outside private areas, scrolling, public menu and FAQ changes, page size, a broad device category and time public sections are in view. You can reject non-essential cookies and still browse or join the waitlist.",
+        "A visual replay reconstructs the public page and its changes. It is not a recording of your desktop, other windows, camera or microphone. Typed text, form contents and marked private areas are masked. Private links, activity on other pages, the reading app and other websites are excluded. We do not record keystrokes or upload your stories through this feature.",
         "Each opted-in visit gets a random temporary session code. These records are pseudonymous, not anonymous. We do not store raw network addresses, full browser strings or contact details in replay records, connect them to waitlist, questionnaire or contact records, or use them for advertising or to infer private interests. Hosting and separate security controls may still process technical information as described above.",
-        "Heatmaps group the recorded visits to show where clicks happened, how far people scrolled and how long public sections were in view while the page was active. Time in view does not show where someone looked or why they left. Playback can differ from the original page if its size, layout or content changed.",
-        "Replay is off until you opt in. Privacy choices lets you change this at any time. Do Not Track, Global Privacy Control and turning off website measurement also stop new replay recording. Turning replay off stops collection immediately and asks us to remove the current visit's replay if this page still holds its temporary deletion credential. If that request cannot finish, the saved visit expires on its normal schedule. Earlier visits cannot be found through a browser preference alone."
+        "Heatmaps group the recorded visits to show clicks, scroll reach and how long public sections were in view while the page was active. Time in view does not show where someone looked or why they left. The visual replay may be incomplete or differ from the original when content, loading, size or recording limits change.",
+        "Recording is off until you make a current, positive choice. The earlier interaction-replay preference does not allow the expanded visual recording. Cookie settings lets you change analytics and recordings separately at any time. Do Not Track and Global Privacy Control stop optional collection. Turning recordings off stops new collection immediately and asks us to remove this visit’s recording while the page still holds its temporary deletion credential. If the request cannot finish, the stored visit expires normally. Earlier visits cannot be found using a preference cookie alone."
       ]
     },
     {
@@ -66,17 +66,18 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
         "News and offers: where you separately opt in, we send SatinLore news or promotional offers. Our lawful basis is consent. Joining a survey, entering a draw or agreeing to sensitive research is not consent to marketing.",
         "Contact and support: we use your message to answer your enquiry and resolve problems. Our lawful basis is our legitimate interest in responding to people who contact us. If an enquiry asks us to take steps towards an agreement with you, we use the information needed for those steps.",
         "Security and compliance: we use necessary technical and administration records to detect abuse, fix faults, manage complaints and keep evidence of our actions. We rely on legitimate interests in protecting visitors and the service, or a legal obligation where a specific law requires us to keep or disclose information.",
-        "Aggregate website measurement: we use limited information to understand and improve the website. Where a specific legal exception permits this measurement without consent, we explain it and provide the required way to object. We do not treat a measurement exception as permission for advertising.",
-        "Optional session replay and heatmaps: we rely on your consent to record an individual homepage visit and use those records to improve the website. This is a separate choice from waitlist updates, marketing and research. We do not rely on an aggregate-measurement exception to record individual visits."
+        "Optional analytics: we rely on your cookie choice to count eligible public visits and waitlist-button clicks and improve the website. You can reject analytics without losing access to the website or waitlist. These statistics are separate from optional website recordings and are not used for advertising.",
+        "Optional website recordings and heatmaps: we rely on your consent to record an individual public-homepage visit and use it to improve the website. This is a separate category from analytics and a separate choice from waitlist updates, marketing and research. We do not treat a general cookie choice as permission for an undisclosed purpose."
       ]
     },
     {
       "heading": "Cookies and similar tools",
       "paragraphs": [
         "Cookies and similar tools can store or read information on your device. Tools strictly needed to provide a service you request, such as essential security or remembering your privacy choice, may work without separate consent.",
-        "Our aggregate website counters use no analytics cookies or lasting visitor identifiers. You can turn them off using the controls below or Privacy choices in the footer. We also honour Do Not Track and Global Privacy Control signals. A preference cookie remembers your measurement choice for 180 days and contains no visitor ID.",
-        "A separate preference cookie remembers whether you allow optional session replay for 180 days. It stores only your choice, not a session or visitor ID. The page keeps its recording's temporary write/deletion credential only in memory for the current visit. It is not saved in a browser cookie or browser storage.",
-        "We ask before using optional analytics, advertising or similar tracking where consent is required. You can refuse those tools and still use the waitlist. If such tools are offered, the cookie information and controls explain their purpose, provider and duration, and let you change your choice. Using the website alone does not mean you agree to optional tracking."
+        "Our cookie banner offers Accept all cookies, Reject non-essential cookies and Manage choices. Optional categories start off. You can allow Analytics, Website recordings, both or neither. Essential tools remain available. Privacy choices in the footer and the controls below reopen Cookie settings. We also honour Do Not Track and Global Privacy Control signals.",
+        "A versioned first-party preference cookie remembers your category choices for 180 days. Compatibility preference cookies may also retain the same on/off choices for that period. These cookies contain choices, not a visitor or session ID. The current page keeps a recording’s temporary write/deletion credential only in memory, not in a cookie or browser storage.",
+        "Analytics counts use no separate analytics cookie or lasting visitor identifier. Protected daily codes expire just after UTC midnight; daily totals are kept for up to 90 days. Website recordings are kept for up to 30 days. Cookie settings describes each category’s purpose, provider and duration.",
+        "Future tools must use the matching disclosed category and honour your choice before they load. A new purpose or materially wider recording scope is explained and needs a fresh choice before it is enabled. Accepting all currently described cookies is not blanket permission for unknown future uses. There are no advertising or social-media tracking cookies in the current category list."
       ]
     },
     {
@@ -133,7 +134,7 @@ export const websitePrivacyNotice: PrivacyNoticeData = {
       ]
     }
   ],
-  "date": "Updated 2 November 2026 · Coming-soon website and waitlist",
+  "date": "Updated 2 November 2026",
   "signoff": "SatinLore Team"
 };
 

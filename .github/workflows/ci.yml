@@ -1,7 +1,7 @@
 name: Website checks
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
   pull_request:
 permissions:
   contents: read
@@ -22,3 +22,5 @@ jobs:
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
+      - run: node --experimental-strip-types scripts/experience-browser-check.mjs

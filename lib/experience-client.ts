@@ -1,4 +1,7 @@
-/** Optional interaction replay. No DOM snapshots, user text, URLs or persistent visitor IDs. */
+import {cookieCategoryAllowed, readCookieConsent, browserPrivacySignalOff} from "./cookie-consent.mjs";
+import {loadVisualRecord, VisualReplayRecorder, VISUAL_FORMAT} from "./visual-replay-client.mjs";
+
+/** Optional public-page replay. Visual snapshots mask private regions before transport. */
 export const EXPERIENCE_LAYOUT = "landing-20261102";
 export const REPLAY_COOKIE = "satinlore_replay";
 export const PRIVACY_EVENT = "satinlore:privacy-choice";
@@ -25,10 +28,10 @@ export function replayChoice(cookie: string): "on" | "off" | null {
   return value === "on" || value === "off" ? value : null;
 }
 export function browserPrivacyOff(nav: Pick<Navigator, "doNotTrack"> & {globalPrivacyControl?: boolean}, cookie: string) {
-  return nav.doNotTrack === "1" || nav.globalPrivacyControl === true || cookie.split(";").some(part => part.trim() === "satinlore_measurement=off");
+  return browserPrivacySignalOff(nav) || !readCookieConsent(cookie) && cookie.split(";").some(part => part.trim() === "satinlore_measurement=off");
 }
 export function replayPermitted(path: string, cookie: string, nav: Pick<Navigator, "doNotTrack"> & {globalPrivacyControl?: boolean}) {
-  return path === "/" && replayChoice(cookie) === "on" && !browserPrivacyOff(nav, cookie);
+  return path === "/" && cookieCategoryAllowed(cookie, "experience") && !browserPrivacyOff(nav, cookie);
 }
 export function replayPreferenceCookie(value: "on" | "off", secure = true) {
   return `${REPLAY_COOKIE}=${value}; Path=/; SameSite=Lax; Max-Age=15552000${secure ? "; Secure" : ""}`;
@@ -55,6 +58,7 @@ export type ExperienceEnvironment = {
   clearInterval(timer: unknown): void;
   views(ms: number): {section: Section; ms: number}[];
   onState?(state: ExperienceState): void;
+  visualFactory?(credentials: Credentials, offset: () => number, onFailure: () => void): VisualReplayRecorder;
 };
 
 /** Testable lifecycle; admission and write credentials remain in this object's memory only. */
@@ -74,19 +78,24 @@ export class ExperienceRecorder {
   private detach: (() => void) | null = null;
   private state: ExperienceState = "off";
   private visibleState = false;
+  private visual: VisualReplayRecorder | null = null;
+  private visualUnavailable = false;
 
   constructor(env: ExperienceEnvironment) { this.env = env; }
   private setState(state: ExperienceState) { this.state = state; this.env.onState?.(state); }
   snapshot() { return {state: this.state, active: this.active, captured: this.captured, queued: this.queue.length, sequence: this.sequence,
+    visualAvailable: !this.visualUnavailable && this.visual?.snapshot().active === true,
     canWithdraw: this.credentials !== null || this.state === "starting"}; }
   private consentAllowed() { return this.env.consentAllowed?.() ?? this.env.allowed(); }
   refreshVisibility() {
     if (this.active && this.visibleState !== this.env.visible()) this.push({k: "visibility", visible: this.env.visible()});
+    this.visual?.refreshVisibility();
   }
   private removeListeners() {
     this.detach?.(); this.detach = null;
     if (this.timer !== null) this.env.clearInterval(this.timer);
     this.timer = null;
+    this.visual?.stopCapture();
   }
   private async erase(credentials: Credentials) {
     try {
@@ -99,7 +108,7 @@ export class ExperienceRecorder {
     const epoch = ++this.epoch;
     this.setState("starting");
     try {
-      const reply = await this.env.request({action: "start", v: 1, layout: EXPERIENCE_LAYOUT,
+      const reply = await this.env.request({action: "start", v: this.env.visualFactory ? 2 : 1, ...(this.env.visualFactory ? {format: VISUAL_FORMAT} : {}), layout: EXPERIENCE_LAYOUT,
         viewport: this.env.viewport(), consent: true}) as SessionReply;
       if (!reply || reply.ok !== true || !UUID.test(reply.sid) || typeof reply.token !== "string" || !/^[a-f0-9]{32,128}$/i.test(reply.token)) throw new Error();
       const credentials = {sid: reply.sid, token: reply.token};
@@ -108,12 +117,24 @@ export class ExperienceRecorder {
       this.startedAt = this.env.now(); this.lastViewAt = this.startedAt;
       this.credentials = credentials; this.active = true;
       this.captured = 0; this.sequence = 0; this.queue = []; this.pending = null;
+      this.visualUnavailable = false;
       this.visibleState = this.env.visible();
       this.push({k: "visibility", visible: this.visibleState});
       this.push({k: "viewport", ...this.env.viewport()});
+      if (this.env.visualFactory) {
+        this.visual = this.env.visualFactory(credentials, () => this.env.now() - this.startedAt, () => {
+          if (epoch !== this.epoch) return;
+          // Visual storage/network limits do not disable the separately bounded
+          // numeric heatmap stream or discard its queued events.
+          this.visualUnavailable = true;
+          this.visual?.discard(); this.visual = null;
+          this.setState("unavailable");
+        });
+        void this.visual.start();
+      }
       this.detach = this.env.listen(event => this.push(event), () => { void this.flush(true); });
       this.timer = this.env.interval(() => this.tick(), 1000);
-      this.setState("recording");
+      this.setState(this.visualUnavailable ? "unavailable" : "recording");
       return true;
     } catch {
       if (epoch === this.epoch) this.setState("unavailable");
@@ -124,7 +145,7 @@ export class ExperienceRecorder {
     if (!this.active) return;
     if (!this.env.allowed()) { void this.stop(this.consentAllowed() ? {flush: true} : {withdraw: true}); return; }
     const t = Math.max(0, Math.floor(this.env.now() - this.startedAt));
-    if (event.k === "visibility") { this.lastViewAt = this.env.now(); this.visibleState = event.visible; }
+    if (event.k === "visibility") { this.lastViewAt = this.env.now(); this.visibleState = event.visible; this.visual?.refreshVisibility(); }
     if (t > MAX_DURATION || this.captured >= MAX_EVENTS) { void this.stop({flush: true}); this.setState("finished"); return; }
     if (!this.env.visible() && event.k !== "visibility") return;
     this.queue.push({...event, t} as ExperienceEvent); this.captured++;
@@ -141,6 +162,9 @@ export class ExperienceRecorder {
     if (Math.floor((now - this.startedAt) / 1000) % 5 === 0) void this.flush();
   }
   async flush(keepalive = false) {
+    await Promise.all([this.flushNumeric(keepalive), this.visual?.flush(keepalive)]);
+  }
+  private async flushNumeric(keepalive = false) {
     if (!this.credentials || this.sending || !this.queue.length && !this.pending) return;
     if (!this.consentAllowed()) { await this.stop({withdraw: true}); return; }
     if (!this.pending) this.pending = {events: this.queue.splice(0, 64), seq: this.sequence, retries: 0};
@@ -163,6 +187,7 @@ export class ExperienceRecorder {
     this.active = false; this.removeListeners();
     if (flush && !withdraw) await this.flush(true);
     ++this.epoch;
+    this.visual?.discard(); this.visual = null;
     const credentials = this.credentials; this.credentials = null;
     this.queue = []; this.pending = null; this.setState("off");
     return credentials && withdraw ? this.erase(credentials) : withdraw && admissionPending ? false : true;
@@ -182,15 +207,18 @@ export function maskedTarget(target: EventTarget | null): boolean {
 export function createBrowserExperienceRecorder(onState?: (state: ExperienceState) => void) {
   const viewport = () => safeViewport(window.innerWidth, window.innerHeight, Math.max(document.documentElement.scrollHeight, document.body.scrollHeight));
   const visible = () => !document.hidden && !document.querySelector('[data-experience-consent-open="true"]');
+  const allowed = () => replayPermitted(location.pathname, document.cookie, navigator);
+  const consentAllowed = () => cookieCategoryAllowed(document.cookie, "experience") && !browserPrivacyOff(navigator, document.cookie);
+  const request = async (body: Record<string, unknown>, keepalive = false) => {
+    const response = await fetch("/api/experience", {method: "POST", credentials: "same-origin", cache: "no-store", redirect: "error",
+      headers: {"Content-Type": "application/json", Accept: "application/json", ...(body.action === "visual" ? {"X-SatinLore-Replay": VISUAL_FORMAT} : {})},
+      body: JSON.stringify(body), keepalive, signal: AbortSignal.timeout(10000)});
+    if (!response.ok) throw new Error("Optional replay is unavailable.");
+    return response.json();
+  };
   return new ExperienceRecorder({
-    allowed: () => replayPermitted(location.pathname, document.cookie, navigator), now: () => performance.now(), viewport, visible, onState,
-    consentAllowed: () => replayChoice(document.cookie) === "on" && !browserPrivacyOff(navigator, document.cookie),
-    async request(body, keepalive = false) {
-      const response = await fetch("/api/experience", {method: "POST", credentials: "same-origin", cache: "no-store", redirect: "error",
-        headers: {"Content-Type": "application/json", Accept: "application/json"}, body: JSON.stringify(body), keepalive, signal: AbortSignal.timeout(10000)});
-      if (!response.ok) throw new Error("Optional replay is unavailable.");
-      return response.json();
-    },
+    allowed, consentAllowed, now: () => performance.now(), viewport, visible, onState, request,
+    visualFactory: (credentials, offset, onFailure) => new VisualReplayRecorder({allowed, consentAllowed, visible, offset, request, assetOrigin: location.origin, loadRecord: loadVisualRecord, onFailure}, credentials),
     interval: (callback, ms) => setInterval(callback, ms), clearInterval: timer => clearInterval(timer as ReturnType<typeof setInterval>),
     views(ms) {
       const height = window.innerHeight;

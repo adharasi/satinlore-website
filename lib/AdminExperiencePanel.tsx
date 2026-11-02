@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ExperienceEvent, ExperienceSession } from "@/lib/website-experience";
 import { fitViewport, replayAtForm, replayState } from "@/lib/experience-view";
+import VisualReplay from "@/lib/VisualReplay";
+import type { VisualRecording } from "@/lib/visual-replay-view";
 import "./admin-experience.css";
 
 const LAYOUT = "landing-20261102";
@@ -19,7 +21,7 @@ type Overview = {
   summary: { sessions: number; clicks: number; visibleMs: number; averageDurationMs: number; averageMaxScroll: number };
   sessions: ExperienceSession[]; total: number; page: number; pageSize: number; hasMore: boolean; heatmap: Heatmap;
 };
-type Detail = { session: ExperienceSession; events: ExperienceEvent[]; incomplete: boolean };
+type Detail = { session: ExperienceSession; events: ExperienceEvent[]; incomplete: boolean; visual?: VisualRecording | null };
 type PreviewGeometry = { height: number; layout: string; sections: Record<string, { top: number; height: number }> };
 type MapMode = "clicks" | "moves" | "time" | "scroll";
 const integer = (value: number) => Math.max(0, Math.round(value)).toLocaleString("en-GB");
@@ -128,7 +130,7 @@ function HeatmapView({ data, device }: { data: Heatmap; device: string }) {
   </section>;
 }
 
-function ReplayView({ detail }: { detail: Detail }) {
+function InteractionReplayView({ detail }: { detail: Detail }) {
   const [at, setAt] = useState(0), [playing, setPlaying] = useState(false), [speed, setSpeed] = useState(1);
   const [geometry, setGeometry] = useState<PreviewGeometry | null>(null);
   const length = Math.max(0, Math.min(600000, detail.session.durationMs, Math.max(0, ...detail.events.map(event => event.t))));
@@ -151,7 +153,7 @@ function ReplayView({ detail }: { detail: Detail }) {
   const clickEvents = detail.events.filter(event => event.k === "click");
   const mismatch = geometry && geometry.layout !== detail.session.layout;
   return <section className="experience-replay" aria-label="Session replay">
-    <div className="experience-replay-heading"><div><h3>Reconstructed session replay</h3><p>{timestamp(detail.session.startedAt)} · {detail.session.device} · {detail.session.viewport.w} × {detail.session.viewport.h}</p></div><span className="experience-private-pill">Forms excluded</span></div>
+    <div className="experience-replay-heading"><div><h3>Interaction replay</h3><p>{timestamp(detail.session.startedAt)} · {detail.session.device} · {detail.session.viewport.w} × {detail.session.viewport.h}</p></div><span className="experience-private-pill">Forms excluded</span></div>
     {detail.incomplete && <p className="experience-warning" role="status">Some batches did not arrive. This replay may have gaps.</p>}
     {mismatch && <p className="experience-warning" role="status">The page version has changed. Overlay positions are unavailable for this recording.</p>}
     <PagePreview width={snapshot.viewport.w} height={snapshot.viewport.h} scroll={snapshot.scrollY} expectedLayout={detail.session.layout} events={detail.events} at={at} onGeometry={setGeometry}>{(page, scale) => <div className="experience-replay-overlay" aria-hidden="true">
@@ -164,6 +166,20 @@ function ReplayView({ detail }: { detail: Detail }) {
     {clickEvents.length > 0 && <div className="experience-event-markers" aria-label="Jump to a click">{clickEvents.slice(0, 30).map((event, index) => <button type="button" key={`${event.t}-${index}`} onClick={() => { setPlaying(false); setAt(event.t); }}>Click {index + 1}<span>{elapsed(event.t)}</span></button>)}</div>}
     <p className="admin-note">This replays shared clicks, movement and scrolling over the matching public page layout. It is not a screen recording, and it cannot show typed text, form answers or private pages.</p>
   </section>;
+}
+
+function ReplayView({ detail }: { detail: Detail }) {
+  const [mode, setMode] = useState<"visual" | "interaction">("visual");
+  useEffect(() => setMode("visual"), [detail.session.id]);
+  if (!detail.visual?.events?.length) return <>{detail.visual && <p className="experience-warning" role="status">The visual page snapshot has not arrived for this visit. Showing the interaction replay below.</p>}<InteractionReplayView detail={detail} /></>;
+  return <div className="experience-recording-views">
+    <div className="experience-mode-tabs" role="group" aria-label="Recording format"><button type="button" aria-pressed={mode === "visual"} onClick={() => setMode("visual")}>Visual website replay</button><button type="button" aria-pressed={mode === "interaction"} onClick={() => setMode("interaction")}>Interaction replay</button></div>
+    {mode === "interaction" ? <InteractionReplayView detail={detail} /> : <section className="experience-replay" aria-label="Visual website replay">
+      <div className="experience-replay-heading"><div><h3>Visual website replay</h3><p>{timestamp(detail.session.startedAt)} · {detail.session.device} · {detail.session.viewport.w} × {detail.session.viewport.h}</p></div><span className="experience-private-pill">Private regions masked</span></div>
+      {(detail.visual.incomplete || detail.incomplete) && <p className="experience-warning" role="status">Some activity did not arrive or a recording limit was reached. This visual replay may end early or have gaps.</p>}
+      <VisualReplay recording={detail.visual} viewport={detail.session.viewport} clicks={detail.events.filter(event => event.k === "click")} />
+    </section>}
+  </div>;
 }
 
 export default function AdminExperiencePanel() {
@@ -216,12 +232,12 @@ export default function AdminExperiencePanel() {
       <div className="admin-stat-grid experience-stats"><div className="admin-stat"><span>Shared sessions</span><strong>{integer(data.summary.sessions)}</strong><small>Visitors who opted in</small></div><div className="admin-stat"><span>Clicks</span><strong>{integer(data.summary.clicks)}</strong><small>Outside form contents</small></div><div className="admin-stat"><span>Average session</span><strong>{duration(data.summary.averageDurationMs)}</strong><small>Recorded timeline length</small></div><div className="admin-stat"><span>Average scroll reach</span><strong>{Math.round(data.summary.averageMaxScroll)}%</strong><small>Of available scrolling</small></div></div>
       <HeatmapView data={data.heatmap} device={device} />
       <section className="admin-card experience-sessions" aria-labelledby="experience-sessions-heading"><div className="admin-card-heading"><div><p className="admin-eyebrow">Session replays</p><h2 id="experience-sessions-heading">Watch the journey.</h2></div><span>{integer(data.total)} retained sessions</span></div>
-        {!data.sessions.length ? <div className="experience-empty"><h3>No shared sessions yet.</h3><p>Visitors can allow replays from the homepage privacy choice. Refusing does not affect the waitlist.</p></div> : <><div className="experience-session-list">{data.sessions.map(session => <button key={session.id} type="button" className={`experience-session-row${selected === session.id ? " is-selected" : ""}`} onClick={() => setSelected(session.id)} aria-pressed={selected === session.id}><span><strong>{timestamp(session.startedAt)}</strong><small>{session.device} · {session.viewport.w} × {session.viewport.h}</small></span><span><strong>{duration(session.durationMs)}</strong><small>{integer(session.clicks)} clicks · {Math.round(session.maxScroll)}% scroll</small></span><span aria-hidden="true">Play ↗</span></button>)}</div><div className="experience-pagination"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous</button><span>Page {data.page}</span><button type="button" disabled={!data.hasMore || loading} onClick={() => setPage(value => value + 1)}>Next</button></div></>}
+        {!data.sessions.length ? <div className="experience-empty"><h3>No shared sessions yet.</h3><p>New visits appear when a visitor allows website recording in Cookie choices. Rejecting non-essential cookies does not affect the waitlist.</p></div> : <><div className="experience-session-list">{data.sessions.map(session => <button key={session.id} type="button" className={`experience-session-row${selected === session.id ? " is-selected" : ""}`} onClick={() => setSelected(session.id)} aria-pressed={selected === session.id}><span><strong>{timestamp(session.startedAt)}</strong><small>{session.device} · {session.viewport.w} × {session.viewport.h}{(session as ExperienceSession & { visual?: boolean }).visual ? " · visual replay" : " · interaction replay"}</small></span><span><strong>{duration(session.durationMs)}</strong><small>{integer(session.clicks)} clicks · {Math.round(session.maxScroll)}% scroll</small></span><span aria-hidden="true">Play ↗</span></button>)}</div><div className="experience-pagination"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))}>Previous</button><span>Page {data.page}</span><button type="button" disabled={!data.hasMore || loading} onClick={() => setPage(value => value + 1)}>Next</button></div></>}
         {detailLoading && <p role="status" className="admin-empty">Loading this replay…</p>}
         {detailError && <p role="alert" className="experience-error">{detailError}</p>}
         {detail && <><ReplayView detail={detail} /><div className="experience-delete-row"><p className="admin-note">Retained until {new Date(detail.session.expiresAt).toLocaleDateString("en-GB", { timeZone: "Europe/London" })}.</p><button type="button" className="experience-delete" disabled={deleting} onClick={() => void removeSelected()}>{deleting ? "Removing…" : "Delete recording"}</button></div></>}
       </section>
-      <section className="admin-tracking-note"><h2>Understand patterns, without reading private details.</h2><p>These views cover opted-in homepage sessions retained for up to {data.retentionDays} days. They are separate from daily unique-visitor estimates, waitlist records and research answers. A session is not a distinct person. Time in view, pointer activity and repeated clicks are clues to investigate; they do not prove attention or explain why a person left.</p><p>Each replay is limited to ten minutes. Browser privacy signals, visitors who decline, unsupported browsers and missing batches can reduce coverage. No camera, microphone, screen video, input text, private link or form answer is captured.</p></section>
+      <section className="admin-tracking-note"><h2>Understand patterns, without reading private details.</h2><p>These views cover opted-in homepage sessions retained for up to {data.retentionDays} days. They are separate from daily unique-visitor estimates, waitlist records and research answers. A session is not a distinct person. Time in view, pointer activity and repeated clicks are clues to investigate; they do not prove attention or explain why a person left.</p><p>New visual recordings include page snapshots and changes, with private regions masked. Earlier recordings have the interaction replay only. Each replay is limited to ten minutes. Browser privacy signals, visitors who decline, unsupported browsers, recording limits and missing batches can reduce coverage. No camera, microphone, device-screen video, input text, private link or form answer is captured.</p></section>
     </>}
   </div>;
 }

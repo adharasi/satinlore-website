@@ -7,10 +7,11 @@ const experience = await import(new URL("../lib/website-experience.ts", import.m
 const { EXPERIENCE_LAYOUT, EXPERIENCE_CONSENT_VERSION, ExperienceError, validateExperienceEvents, validateExperienceViewport, readExperienceJson, experienceConsentAllowed, experienceSameOrigin, writeExperience, readExperienceOverview, readExperienceDetail, deleteExperienceSession, experienceFilters } = experience;
 const origin = "https://satinlore.com", now = Date.UTC(2026, 10, 2, 12);
 const start = { action: "start", v: 1, layout: EXPERIENCE_LAYOUT, viewport: { w: 1360, h: 900, dh: 9000 }, consent: true };
-function request(body: unknown = start, extra: Record<string, string> = {}) { return new Request(origin + "/api/experience", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json", Cookie: "satinlore_replay=on", "User-Agent": "Mozilla/5.0 Desktop", "CF-Connecting-IP": "192.0.2.10", ...extra }, body: JSON.stringify(body) }); }
+function request(body: unknown = start, extra: Record<string, string> = {}) { return new Request(origin + "/api/experience", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json", Cookie: "satinlore_consent=v2.1.1; satinlore_replay=on", "User-Agent": "Mozilla/5.0 Desktop", "CF-Connecting-IP": "192.0.2.10", ...extra }, body: JSON.stringify(body) }); }
 function fixture() {
   const sqlite = new DatabaseSync(":memory:"); sqlite.exec("PRAGMA foreign_keys=ON; CREATE TABLE rate_limits(key TEXT PRIMARY KEY,count INTEGER,expires_at INTEGER);");
   sqlite.exec(readFileSync(new URL("../drizzle/0009_website_experience.sql", import.meta.url), "utf8"));
+  sqlite.exec(readFileSync(new URL("../drizzle/0010_visual_website_replay.sql", import.meta.url), "utf8"));
   const driver = { prepare(sql: string) { let values: (string | number)[] = []; return { bind(...items: (string | number)[]) { values = items; return this; }, run() { return sqlite.prepare(sql).run(...values); }, async first() { return sqlite.prepare(sql).get(...values) || null; }, async all() { return { results: sqlite.prepare(sql).all(...values) }; } }; }, async batch(statements: { run: () => unknown }[]) { sqlite.exec("BEGIN"); try { const result = statements.map(item => item.run()); sqlite.exec("COMMIT"); return result; } catch(error) { sqlite.exec("ROLLBACK"); throw error; } } } as unknown as D1Database;
   return { sqlite, driver };
 }
@@ -26,6 +27,7 @@ test("the activity schema accepts only fixed numeric geometry and coarse public 
 });
 test("recording requires affirmative preference and honours browser privacy, global opt-out and bots", () => {
   assert.equal(experienceConsentAllowed(request()), true);
+  for (const [cookie, allowed] of [["v2.0.0",false],["v2.1.0",false],["v2.0.1",true],["v2.1.1",true]] as const) assert.equal(experienceConsentAllowed(request(start,{Cookie:`satinlore_consent=${cookie}; satinlore_measurement=off`})),allowed);
   const refused: Record<string, string>[] = [{ Cookie: "" }, { Cookie: "satinlore_replay=off" }, { Cookie: "satinlore_replay=on; satinlore_measurement=off" }, { DNT: "1" }, { "Sec-GPC": "1" }, { "CF-Access-JWT-Assertion": "synthetic" }, { "User-Agent": "HeadlessChrome" }, { Purpose: "prefetch" }];
   for (const extra of refused) assert.equal(experienceConsentAllowed(request(start, extra)), false);
   assert.equal(experienceSameOrigin(request(), origin), true);

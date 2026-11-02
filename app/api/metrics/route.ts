@@ -1,4 +1,4 @@
-import { analyticsRateLimit, ctaMetric, measurementAllowed, recordMetric } from "@/lib/site-analytics";
+import { analyticsRateLimit, consentPageMetric, ctaMetric, measurementAllowed, recordConsentedPageView, recordMetric } from "@/lib/site-analytics";
 import { database, runtime, response } from "@/lib/waitlist-server";
 
 export async function POST(request: Request) {
@@ -20,9 +20,14 @@ export async function POST(request: Request) {
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     body = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch { return response({ error: "Invalid measurement request." }, 400); }
-  const metric = ctaMetric(request, body);
+  const view = consentPageMetric(request, body);
+  const metric = view || ctaMetric(request, body);
   if (!metric) return response({ error: "Invalid measurement request." }, 400);
   try {
+    if (view) {
+      await recordConsentedPageView(database(), request, view, runtime().ABUSE_SALT);
+      return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+    }
     if (!await analyticsRateLimit(database(), request, runtime().ABUSE_SALT, "cta")) return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
     await recordMetric(database(), metric);
   } catch {

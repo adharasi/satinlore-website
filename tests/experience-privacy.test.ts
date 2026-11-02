@@ -6,6 +6,9 @@ import ts from "typescript";
 import type { ExperienceEnvironment, ExperienceEvent } from "../lib/experience-client";
 const { ExperienceRecorder, replayPermitted } = await import(new URL("../lib/experience-client.ts", import.meta.url).href);
 
+const cookieHelpers = await import(new URL("../lib/cookie-consent.mjs", import.meta.url).href);
+const visualHelpers = await import(new URL("../lib/visual-replay-client.mjs", import.meta.url).href);
+const CONSENT = "satinlore_consent=v2.1.1; satinlore_replay=on";
 const SID = "11111111-1111-4111-8111-111111111111";
 const TOKEN = "a".repeat(64);
 const admission = () => ({ ok: true, sid: SID, token: TOKEN, maxDurationMs: 600000 });
@@ -77,7 +80,9 @@ function browserBinding({ cookie = "", path = "/", dnt = "", gpc = false, admiss
   const navigator = { doNotTrack: dnt, globalPrivacyControl: gpc }, location = { pathname: path };
   const exports: { createBrowserExperienceRecorder?: () => InstanceType<typeof ExperienceRecorder> } = {};
   const source = ts.transpileModule(readFileSync(new URL("../lib/experience-client.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(source, { exports, window, document, navigator, location, Element, HTMLDetailsElement: Details,
+  vm.runInNewContext(source, { exports,
+    require: (name: string) => name === "./cookie-consent.mjs" ? cookieHelpers : name === "./visual-replay-client.mjs" ? {...visualHelpers, loadVisualRecord: async () => () => () => {}} : (() => {throw new Error("Unexpected import");})(),
+    window, document, navigator, location, Element, HTMLDetailsElement: Details,
     performance: { now: () => clock }, AbortSignal,
     setInterval: (callback: () => void) => { intervals.set(++nextTimer, callback); return nextTimer; }, clearInterval: (id: number) => intervals.delete(id),
     ResizeObserver: class { constructor(_callback: () => void) { observerCount++; } observe() {} disconnect() {} },
@@ -94,19 +99,19 @@ function browserBinding({ cookie = "", path = "/", dnt = "", gpc = false, admiss
 }
 
 test("actual browser recorder adds no capture listener, observer, timer or request before valid consent", async () => {
-  for (const options of [{}, { cookie: "satinlore_replay=off" }, { cookie: "satinlore_replay=on", path: "/contact" },
-    { cookie: "satinlore_replay=on", path: "/admin" }, { cookie: "satinlore_replay=on", dnt: "1" },
-    { cookie: "satinlore_replay=on", gpc: true }, { cookie: "satinlore_replay=on; satinlore_measurement=off" }]) {
+  for (const options of [{}, { cookie: "satinlore_replay=off" }, { cookie: CONSENT, path: "/contact" },
+    { cookie: CONSENT, path: "/admin" }, { cookie: CONSENT, dnt: "1" },
+    { cookie: CONSENT, gpc: true }, { cookie: "satinlore_replay=on; satinlore_measurement=off" }]) {
     const app = browserBinding(options);
     assert.equal(await app.recorder.start(), false, JSON.stringify(options));
     assert.deepEqual(app.listeners(), { doc: [], win: [], intervals: 0, observers: 0 });
     assert.deepEqual(app.requests, []);
   }
-  assert.equal(replayPermitted("/", "satinlore_replay=on", { doNotTrack: "" }), true);
+  assert.equal(replayPermitted("/", CONSENT, { doNotTrack: "" }), true);
 });
 
 test("real pointer and click bindings exclude complete forms, editable regions and private links without reading values", async () => {
-  const app = browserBinding({ cookie: "satinlore_replay=on" });
+  const app = browserBinding({ cookie: CONSENT });
   assert.equal(await app.recorder.start(), true);
   const form = new app.Element("form");
   const masked = [new app.Element("input"), new app.Element("textarea"), new app.Element("select"),
@@ -131,7 +136,7 @@ test("real pointer and click bindings exclude complete forms, editable regions a
 });
 
 test("real browser bindings throttle pointer samples and clear all capture listeners on withdrawal", async () => {
-  const app = browserBinding({ cookie: "satinlore_replay=on" }); await app.recorder.start();
+  const app = browserBinding({ cookie: CONSENT }); await app.recorder.start();
   const target = new app.Element("article");
   for (const time of [0, 10, 100, 499, 500, 700, 1000]) { app.time(time); app.doc("pointermove", { target, clientX: 50, clientY: 50 }); }
   await app.recorder.flush();
@@ -216,7 +221,7 @@ test("new private experience pages deny access before rendering admin or preview
 });
 
 test("normal homepage navigation preserves its final batch while stopping all capture on the destination", async () => {
-  const app = browserBinding({ cookie: "satinlore_replay=on" }); await app.recorder.start();
+  const app = browserBinding({ cookie: CONSENT }); await app.recorder.start();
   const target = new app.Element("a", { href: "/contact" });
   app.time(100); app.doc("click", { target, clientX: 144, clientY: 300 });
   app.location.pathname = "/contact";
@@ -249,7 +254,7 @@ test("effective visibility changes include privacy-dialog suppression without co
 
 
 test("admission starts the timeline at zero and records an existing halfway scroll without a new scroll event", async () => {
-  const app = browserBinding({cookie: "satinlore_replay=on", admissionDelayMs: 4000});
+  const app = browserBinding({cookie: CONSENT, admissionDelayMs: 4000});
   app.window.scrollY = 2550;
   assert.equal(await app.recorder.start(), true);
   await app.recorder.flush();
@@ -264,4 +269,40 @@ test("admission starts the timeline at zero and records an existing halfway scro
   const later = app.requests.filter(body => body.action === "append").flatMap(body => body.events as ExperienceEvent[]);
   assert.ok(later.some(event => event.k === "scroll" && event.y === 600 && event.t === 100));
   await app.recorder.stop();
+});
+
+test("visual budget failures stop only visual capture while numeric heatmaps and withdrawal remain available", async () => {
+  const app = lifecycle();
+  let visualDetached = 0;
+  app.env.visualFactory = (credentials, offset, onFailure) => new visualHelpers.VisualReplayRecorder({
+    allowed: app.env.allowed, consentAllowed: app.env.allowed, visible: app.env.visible, offset,
+    request: app.env.request, onFailure,
+    loadRecord: async () => (options: {emit(event: unknown): void}) => {
+      options.emit({type: 4, timestamp: 0, data: {href: "https://satinlore.com/", width: 1440, height: 900}});
+      options.emit({type: 2, timestamp: 0, data: {node: {type: 0, id: 1, childNodes: []}, initialOffset: {left: 0, top: 0}}});
+      return () => {visualDetached++;};
+    },
+  }, credentials);
+  app.request(async body => {
+    if (body.action === "start") return admission();
+    if (body.action === "visual") throw new Error("Synthetic visual budget 429");
+    if (body.action === "append") return {ok: true, accepted: true, seq: body.seq};
+    return {ok: true, withdrawn: true};
+  });
+  assert.equal(await app.recorder.start(), true);
+  await Promise.resolve();
+  await app.recorder.flush(); await app.recorder.flush(); await app.recorder.flush();
+  const failed = app.recorder.snapshot();
+  assert.equal(failed.state, "unavailable");
+  assert.equal(failed.visualAvailable, false);
+  assert.equal(failed.active, true, "The numeric collector keeps its own consent, limits and listener lifetime.");
+  assert.equal(failed.canWithdraw, true);
+  assert.equal(visualDetached, 1);
+  assert.equal(app.listeners().listening, true); assert.equal(app.listeners().interval, true);
+  const visualRequests = app.requests.filter(body => body.action === "visual").length;
+  app.time(100); app.push({k: "click", x: 200, y: 300}); await app.recorder.flush();
+  assert.equal(app.requests.filter(body => body.action === "visual").length, visualRequests);
+  assert.ok(app.requests.filter(body => body.action === "append").some(body => (body.events as ExperienceEvent[]).some(event => event.k === "click")));
+  assert.equal(await app.recorder.stop({withdraw: true}), true);
+  assert.equal(app.recorder.snapshot().canWithdraw, false);
 });

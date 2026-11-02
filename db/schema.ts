@@ -134,6 +134,11 @@ export const websiteExperienceSessions = sqliteTable("website_experience_session
   nextSeq: integer("next_seq").notNull().default(0),
   lastT: integer("last_t").notNull().default(0),
   lastVisible: integer("last_visible").notNull().default(1),
+  visualFormat: text("visual_format"),
+  visualBytes: integer("visual_bytes").notNull().default(0),
+  visualEventCount: integer("visual_event_count").notNull().default(0),
+  visualNextSeq: integer("visual_next_seq").notNull().default(0),
+  visualLastT: integer("visual_last_t").notNull().default(0),
 }, table => [
   index("website_experience_sessions_expiry_idx").on(table.expiresAt),
   index("website_experience_sessions_started_device_idx").on(table.startedAt, table.device, table.layout),
@@ -147,5 +152,15 @@ export const websiteExperienceBatches = sqliteTable("website_experience_batches"
   fingerprint: text("fingerprint").notNull(),
   events: text("events").notNull(),
   eventCount: integer("event_count").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [primaryKey({ columns: [table.sessionId, table.seq] })]);
+
+export const websiteVisualBatches = sqliteTable("website_visual_batches", {
+  sessionId: text("session_id").notNull().references(() => websiteExperienceSessions.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  events: text("events").notNull(),
+  eventCount: integer("event_count").notNull(),
+  byteCount: integer("byte_count").notNull(),
   createdAt: integer("created_at").notNull(),
 }, table => [primaryKey({ columns: [table.sessionId, table.seq] })]);

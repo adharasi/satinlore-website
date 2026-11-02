@@ -206,31 +206,12 @@ The Worker name in Cloudflare must match the name in `wrangler.jsonc`. Disable a
 
 Push the real D1 database ID and non-secret deployment settings to the repository. Keep `workers_dev=false` after the custom-domain handoff and `preview_urls=false` unless deliberately enabling a separate safe environment. Do not commit runtime secrets. The `pnpm deploy` script applies only unapplied tracked migrations before publishing the Worker. Its build token must have D1 write access. Review migration changes before merging to `main`; keep arbitrary branch builds disabled so they cannot migrate production. Never replace this with replaying old SQL files individually.
 
-## Homepage replay and heatmap release
+## Homepage visual replay and heatmap release
 
-The later website-experience release adds append-only migration `0009_website_experience.sql` to the existing D1 `DB`, plus `/admin/experience` and its private preview/API routes. The deployment command remains `pnpm deploy`: it applies unapplied migrations and then publishes the Worker. It needs the existing D1 migration/deployment permissions and `ABUSE_SALT`; it adds no analytics provider or runtime secret. Do not change the D1 database ID, replay prior migrations, enable branch previews against production or alter SES/cron settings for this feature.
+The experience releases add append-only migrations `0009_website_experience.sql` and `0010_visual_website_replay.sql` to the existing D1 `DB`, plus `/admin/experience` and its protected preview/API routes. The deployment command remains `pnpm deploy`: it applies unapplied migrations before publishing the Worker. It needs the existing D1 migration/deployment permissions and `ABUSE_SALT`; no analytics provider, new secret, R2 bucket or camera/display permission is required. Keep the database ID, email settings and one-minute cron unchanged.
 
-Keep Cloudflare Access protection on `/admin` and all descendants, including `/admin/experience/preview`, and `/api/admin/*` on every reachable hostname. The app also verifies the founder JWT before returning private replay data or the preview. The preview is a static, masked marketing page in a sandboxed frame; its URL must never become a public route or an authentication bypass.
+Keep Cloudflare Access protection on `/admin` and every descendant, including `/admin/experience/preview` and `/admin/experience/visual-preview`, plus `/api/admin/*` on every reachable hostname. Application handlers independently verify the founder JWT. The new visual renderer route returns an empty, authenticated sandbox with a restrictive CSP; it must not become a public route, execute recorded scripts or allow arbitrary replay network requests.
 
-Before release, run `pnpm test`, `pnpm typecheck` and `pnpm build`. Use only synthetic local sessions to test consent, masking, replay and deletion. After the build and migration succeed, open a public homepage in a separate visitor browser. Verify no replay requests occur before a choice, after **No thanks**, or with a privacy signal. Separately allow replay, click and scroll through public sections, then inspect Experience from the authenticated founder browser. Enter a synthetic marker in the waitlist form without submitting: it must never appear in stored replay events or playback. Stop recording through Privacy choices and check the result without claiming deletion if the request failed. Individual replays expire after 30 days; heatmaps use only retained sessions. See [the complete test guide](docs/website-experience.md).
+Before release run `pnpm test`, `pnpm typecheck`, `pnpm build` and `pnpm test:browser` (install Playwright Chromium in the test environment). The isolated browser check covers actual recorder/page styling, post-snapshot DOM changes, form canaries, withdrawal and nested admin playback using only neutral fixtures. GitHub CI includes this check. Arbitrary branches must not deploy against production D1: the production Cloudflare build remains restricted to `main` even though `codex/**` branches can run GitHub tests.
 
-This release does not enable cameras, microphones, literal video files, cross-site tracking, app-story recording, or CRM-linked visitor profiles. It keeps aggregate counters and their own opt-out separate. Automatic cleanup uses the existing scheduled Worker flow; verify that the one-minute cron remains registered after deployment.
-
-## After launch
-
-- Keep the old deployment available until the data and link transition has been checked.
-- Use `/admin/readers` as the primary CRM. Follow [Google Forms bridge setup](integrations/google-forms/SETUP.md) to record questionnaire responses and merge matching emails. Google Sheets remains an optional private CSV snapshot, with no live two-way sync.
-- Verify the one-minute cron appears under Worker triggers and check a new inbox verification receives the invitation after five minutes. Keep the old immediate welcome flow disabled.
-- Verify runtime defaults before every release. Re-run relevant tests and a real signup after changes to auth, email, forms or domains.
-- Keep feedback alerts under review and remove withdrawn readers from any exported working copies.
-- Back up retained data privately and test a restore process. A code rollback does not roll back a database migration or recover deleted records.
-
-## Official references
-
-- Workers Git builds: https://developers.cloudflare.com/workers/ci-cd/builds/configuration/
-- Worker runtime secrets: https://developers.cloudflare.com/workers/configuration/secrets/
-- D1 migrations: https://developers.cloudflare.com/d1/reference/migrations/
-- Access path protection: https://developers.cloudflare.com/cloudflare-one/access-controls/policies/app-paths/
-- Access JWT validation: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/
-- One-time PIN: https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/
-- Worker custom domains: https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
+After migration/deployment succeeds, use a separate synthetic visitor tab. Reject non-essential cookies and confirm no recording is retained. Accept all, interact with public sections, type only a synthetic marker without submitting, and inspect Experience in the signed-in admin. New sessions should offer **Visual website replay** and **Interaction replay**; check Play/Pause, seek, speed and Full screen. The private marker/form contents must be absent. Earlier sessions keep their original player, and heatmaps remain available. Turning recordings off requests deletion of the current owned visit; report failures truthfully. Retention remains 30 days. See [the complete test guide](docs/website-experience.md).

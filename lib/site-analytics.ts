@@ -1,4 +1,5 @@
 /** First-party daily counters, with separately stored, short-lived pseudonymous dedupe keys. */
+import {cookieCategoryAllowed} from "./cookie-consent.mjs";
 export const METRIC_PAGES = ["/", "/privacy", "/contact", "/research-privacy"] as const;
 export const CTA_SURFACES = ["header", "hero", "beta", "controls", "mobile"] as const;
 const SOURCES = ["direct", "x", "instagram", "reddit", "tiktok", "youtube", "facebook", "linkedin", "email", "search", "other"] as const;
@@ -47,7 +48,7 @@ export function metricDevice(headers: Headers): MetricDevice {
 }
 export function measurementAllowed(request: Request): boolean {
   if (request.headers.get("dnt") === "1" || request.headers.get("sec-gpc") === "1") return false;
-  if ((request.headers.get("cookie") || "").split(";").some(cookie => cookie.trim() === "satinlore_measurement=off")) return false;
+  if (!cookieCategoryAllowed(request.headers.get("cookie") || "", "analytics")) return false;
   if (request.headers.has("cf-access-jwt-assertion")) return false;
   const agent = request.headers.get("user-agent") || "";
   if (BOT.test(agent)) return false;
@@ -74,6 +75,15 @@ export function ctaMetric(request: Request, body: unknown, now = Date.now()): Me
   if (data.event !== "cta_click" || data.page !== "/" || !CTA_SURFACES.includes(data.surface as typeof CTA_SURFACES[number])) return null;
   if (data.source !== undefined && (typeof data.source !== "string" || data.source.length > 64)) return null;
   return requestMetric(request, "cta_click", "/", data.source, now);
+}
+/** A first analytics grant can count the already-open homepage without a reload. */
+export function consentPageMetric(request: Request, body: unknown, now = Date.now()): MetricRecord | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const data = body as Record<string, unknown>;
+  if (Object.keys(data).some(key => !["event", "page", "source", "referrer"].includes(key)) || data.event !== "consent_page_view" || data.page !== "/") return null;
+  if (data.source !== undefined && (typeof data.source !== "string" || !SOURCES.includes(data.source as MetricSource))) return null;
+  if (data.referrer !== undefined && (typeof data.referrer !== "string" || !REFERRERS.includes(data.referrer as MetricReferrer))) return null;
+  return {...requestMetric(request, "page_view", "/", data.source, now), ...(data.referrer === undefined ? {} : {referrer: data.referrer as MetricReferrer})};
 }
 export const INCREMENT_METRIC_SQL = `INSERT INTO website_metrics(day,event,page,source,referrer,device,count,last_seen)
 VALUES(?,?,?,?,?,?,1,?) ON CONFLICT(day,event,page,source,referrer,device) DO UPDATE SET count=website_metrics.count+1,last_seen=excluded.last_seen`;
@@ -126,7 +136,10 @@ export async function analyticsRateLimit(db: D1Database, request: Request, salt:
 }
 export async function trackPageView(db: D1Database, request: Request, result: Response, salt?: string, now = Date.now()) {
   const metric = pageMetric(request, result, now);
-  if (metric && await analyticsRateLimit(db, request, salt, "page", now)) {
+  if (metric) await recordConsentedPageView(db, request, metric, salt, now);
+}
+export async function recordConsentedPageView(db: D1Database, request: Request, metric: MetricRecord, salt?: string, now = Date.now()) {
+  if (measurementAllowed(request) && metric.event === "page_view" && await analyticsRateLimit(db, request, salt, "page", now)) {
     // D1 batches are transactional. Only newly inserted dedupe keys fire the aggregate-count trigger.
     await db.batch([metricStatement(db, metric, now), ...await uniqueStatements(db, request, metric, salt)]);
   }

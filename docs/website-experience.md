@@ -1,45 +1,41 @@
-# Website experience measurement
+# Website recordings and experience measurement
 
-This feature records a visitor's public-homepage actions only after separate consent. The founder can inspect **Experience** at `/admin/experience` for session replay, click/movement heatmaps, scroll reach and time in view. It supplements the daily counters in Overview. It does not retrospectively record old traffic.
+The current release captures detailed visual website replays after fresh, versioned cookie consent. Admin → Experience (`/admin/experience`) also shows the existing numeric interaction replays and heatmaps. Only the public homepage is recorded. There is no retrospective capture of old traffic or recording of the private app, admin, forms or management links.
 
-## Visitor choices
+## Cookie choices
 
-- Replay starts off. Allow and No thanks must be equally reachable, without blocking the waitlist.
-- `satinlore_replay=on` or `off` is a 180-day preference cookie. It has no session or visitor identifier.
-- Do Not Track, Global Privacy Control and the existing aggregate-measurement opt-out stop replay recording too. Allowing replay must not silently change the aggregate choice.
-- Privacy choices is available again from the footer and privacy page. Turning replay off removes listeners/buffers immediately and requests deletion of the current recording while its in-memory credential is available. A failed deletion must be reported truthfully; new collection remains off.
-- Earlier page visits cannot be discovered by the preference cookie. They expire normally after 30 days unless separately removed through authorised controls.
+The banner offers **Accept all cookies**, **Reject non-essential cookies** and **Manage choices**. Essential tools are always available; Analytics and Website recordings are independent optional categories. The 180-day preference contains category bits/version, not a visitor ID. Legacy `satinlore_replay=on` alone cannot authorize new collection. Do Not Track and Global Privacy Control keep optional tools off. New materially different purposes need a new disclosed consent version before activation. The footer's Privacy choices and privacy page reopen the same settings. See [cookie registry and extension rules](cookie-choices.md).
 
-## What is retained
+The first Analytics grant records one coarse homepage view for the current load; repeated choice events cannot duplicate it. Existing accepted document requests keep their server-side pageview/unique logic. No page counter runs before the current Analytics choice. Waitlist, news and research consent remain separate.
 
-Only the public `/` homepage is eligible. Supported records contain a fixed layout version, visit time, broad device class, viewport/document dimensions and bounded numeric actions: pointer/click positions, scroll progress, allowlisted public menu/FAQ open states, visibility changes and active time for an allowlisted public section. There are no DOM snapshots, arbitrary selectors/text, input values, form contents, stories, raw network addresses, full browser strings, full links, campaign query values or CRM/contact identifiers in replay records.
+## What is recorded and stored
 
-A random server session ID separates visits. A random write/deletion credential is returned to the recording page, held only in memory and stored hash-only on the server. It does not provide admin read access. Appending to another session requires that session's credential. It must never be logged, exported in admin data, saved in cookies/browser storage or embedded in links.
+New `rrweb-v1` sessions retain sanitized homepage DOM/styles and approved public images, changes, scroll/cursor/click activity, viewport/visibility and section time. Whole forms, signup notices, editable regions and private controls are masked before transmission. Their dimensions remain so the page layout stays representative. Scripts, private URLs/query values, unsupported events, media/canvas, raw addresses, full user agents, input values and CRM identifiers are excluded. Capture pauses in cookie dialogs/background tabs and stops on loss of consent or departure from the public homepage.
 
-The server requires a same-origin JSON request, affirmative replay choice and eligible measurement conditions for creation/appending. It validates exact fields, bounds and event kinds, rate limits recording independently of signup/contact, and makes retries idempotent. A current-session withdrawal still works when the preference has already been switched off. Owner-only admin routes independently validate Access before reading/deleting. The system does not join replay records to the CRM, waitlist or research answers.
+An owner token exists only in the page's memory; the server stores its hash. Same-origin requests, bounded payloads, exact sequence/fingerprint checks, stateful privacy validation and rate limits protect writes. Each session lasts at most ten minutes and expires after 30 days. Visual data is capped at 3 MiB, 5,000 events and 120 batches; numeric events keep their 3,000-event limit. A 128 MiB global visual-payload budget counts all stored visual bytes, including expired rows until cleanup removes them; atomic guards prevent concurrent visits exceeding it. A full visual budget leaves numeric measurement and the CRM available. Scheduled cleanup, withdrawal and admin deletion remove visual children too. Existing CRM/SES records and retention stay separate. See [the storage/API contract](visual-replay-storage.md).
 
-Each session is capped at ten minutes, 3,000 events, 120 batches and 64 events per bounded batch. Records expire after 30 days and are purged through the existing scheduled cleanup. Heatmaps are derived from retained sessions; deleting or expiring a visit removes its contribution. The existing aggregate measurement totals remain separate and retain their existing 90-day policy.
+## Viewing and interpreting recordings
 
-## How replay and heatmaps should be read
+Open Admin → Experience, choose the period/device and select a visit. New sessions offer **Visual website replay** by default, with Play/Pause, seeking, speed, click markers and Full screen. **Interaction replay** remains an alternative, and earlier sessions retain the original player. The visual player reconstructs the captured page, rather than displaying the latest homepage layout. Untrusted stored events are revalidated, then rendered inside protected script-disabled sandboxes with approved-image-only network access. Forms and private areas cannot be interacted with.
 
-Replay reconstructs clicks, pointer movements and scrolls on a static copy of the public landing page. It is not a camera, microphone, screenshot stream, literal screen video or a pixel-perfect recording. Forms/private regions are masked. The preview uses a protected, sandboxed frame with scripts and forms disabled. No tracking code should run in it.
+This is not a camera/audio recording or desktop/tab video. Cookie acceptance cannot replace the browser's separate display-capture prompt. Only opted-in traffic appears. Time in view, repeated clicks and scroll reach are clues to investigate; they do not prove gaze, confusion, sexual preferences, signup success or the reason someone leaves. Missing batches, blocked assets, masking and capture limits can reduce fidelity; the UI reports incomplete recordings.
 
-Match the recorded layout version and device filter before interpreting an overlay. A changed page, viewport resizing, font/image loading or an excluded region can limit accuracy. The UI must show incompatible-layout or truncated/sample limits rather than imply exact coverage. Time in view measures visible public sections while the page is active; it does not establish gaze, attention, confusion, sexual preferences or why someone left. Clicks do not establish successful signup. Only opted-in traffic appears, and recordings may be truncated by session limits, backgrounding, connection loss or browser privacy controls.
+## Verification checklist
 
-## Local checks
+Run `pnpm test`, `pnpm typecheck`, `pnpm build` and `pnpm test:browser`. Apply local migrations through `0010` in an isolated database. The CI browser suite uses the real recorder/player and neutral fixtures, with a synthetic API and restrictive replay CSP; it never submits production forms or contacts a vendor.
 
-Run `pnpm test`, `pnpm typecheck` and `pnpm build`. Apply local migrations through `0009` before testing the new screens. Use an isolated test database and neutral fixtures; do not copy production visitors or CRM records into tests.
+1. Fresh/legacy visitor: no optional API request, observer or buffer before the new cookie choice. Reject non-essential cookies; interactions stay unrecorded. Browser privacy signals override old/new acceptance.
+2. Independent categories: Analytics-only must not record a visit; Website-recordings-only must work without analytics. Failed preference writes leave optional measurement off on the current page and show an accurate failure.
+3. Accept recording: Meta/full snapshot and later public DOM mutations arrive with bounded numeric activity. Recorded styles, public images, responsive dimensions and open FAQ/menu state should remain usable.
+4. Private canaries: prefill and edit synthetic name/email without submission; inspect requests and playback. No field values, form contents, signup notices, private links or editable subtrees may appear, including after dynamic reclassification/movement.
+5. Playback: verify owner-only routes before data access, nested sandbox/CSP, no recorded scripts/navigation/forms, no foreign-image/CSS/network requests, Play/Pause, seek, speed and full-screen controls. Earlier numeric sessions and heatmaps keep working.
+6. Revoke while loading/sending: stop observers/buffers immediately and delete the current owned visit. In-flight/stale replies cannot restart capture. Failed deletion is reported honestly; earlier visits expire normally without a persistent identifying cookie.
+7. Validate ownership, strict schemas, malformed/oversized payloads, idempotent/concurrent retries, sequence conflicts, timing/byte limits, expiry and deletion. Cleanup must preserve current CRM notes and queued survey email jobs.
+8. Review the cookie choices and player at phone and desktop widths. A desktop viewport check does not establish physical-phone behaviour. Keep automated, browser, deployed and real-visitor evidence separate.
 
-1. Fresh visitor: open the homepage with no replay choice. Confirm no `/api/experience` recording request and no action listeners/buffer before opt-in. Choose No thanks and repeat clicks/scrolls; no replay should be created.
-2. Privacy override: test `DNT: 1`, `Sec-GPC: 1`/browser Global Privacy Control and `satinlore_measurement=off`. An old replay `on` preference must not override them.
-3. Opt-in: allow replay, click public links/FAQ areas, scroll and dwell on sections. Confirm bounded records and a visible current recording in Experience. Replays remain separate from aggregate counters.
-4. Sensitive canary: type a unique synthetic marker into name/email fields without submitting, and interact inside the form. Inspect the session payload and playback; the marker, field values, form DOM and field positions must not be captured.
-5. Other routes: test Contact, Privacy, confirmation/manage links, `/admin`, the private preview and app pages. The homepage collector must not capture them or their links/query values.
-6. Withdrawal: stop replay in the current recording tab. No further batch may append. Its own deletion should work even after setting the cookie to off. Simulate a failed request: keep collection off and show failure/expiry accurately, without a false deletion-success message.
-7. Isolation/retry: an incorrect write token cannot append or withdraw another session; duplicate batches do not duplicate events; payload conflicts are rejected. Reject unknown fields/events/sections, invalid numbers, oversized bodies and expired sessions.
-8. Admin: logged-out requests cannot read the dashboard, individual recordings, heatmaps, preview or deletion endpoint on any hostname. Use the existing signed identity fixture, not a production bypass.
-9. Replay: test Play/Pause, seeking, speed, pointer/click overlay and scrolling at mobile/desktop widths. Verify scripts/forms do not work in the frame, layout mismatches are labelled and playback does not change customer data.
-10. Retention: expire a synthetic session and run cleanup. Both detail and heatmap contribution must disappear. Existing CRM, email queues, contact enquiries and aggregate retention tests must still pass.
+## Current cookie and visual replay release evidence
+
+Local checks on 2 November 2026 passed: 156 tests, TypeScript, production build and built SES readiness with synthetic credentials/mocked responses. Local migrations through `0010` applied successfully. Actual SQLite tests verify strict privacy state across batches, concurrent idempotency, the 128 MiB shared-database visual budget, deletion/retention, and unchanged current CRM notes/survey email jobs. The research notice remains unchanged. The managed development preview did not become healthy after the copied-lock repair, so browser acceptance uses the separate isolated CI suite and signed-in deployed checks; no local browser success is inferred from the build. GitHub browser/deployment outcomes are recorded separately after they run.
 
 ## Release evidence
 

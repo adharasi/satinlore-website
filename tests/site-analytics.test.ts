@@ -4,10 +4,10 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import ts from "typescript";
 const analytics = await import(new URL("../lib/site-analytics.ts", import.meta.url).href);
-const { metricSource, metricReferrer, metricDevice, measurementAllowed, pageMetric, ctaMetric, recordMetric, analyticsRateLimit, trackPageView, readAnalyticsOverview } = analytics;
+const { metricSource, metricReferrer, metricDevice, measurementAllowed, pageMetric, ctaMetric, consentPageMetric, recordConsentedPageView, recordMetric, analyticsRateLimit, trackPageView, readAnalyticsOverview } = analytics;
 const now = Date.UTC(2026, 10, 1, 12);
 const origin = "https://satinlore.com";
-function page(path = "/", headers: Record<string, string> = {}) { return new Request(origin + path, { headers: { "User-Agent": "Mozilla/5.0 Desktop", ...headers } }); }
+function page(path = "/", headers: Record<string, string> = {}) { return new Request(origin + path, { headers: { "User-Agent": "Mozilla/5.0 Desktop", Cookie: "satinlore_consent=v2.1.1", ...headers } }); }
 function html(status = 200) { return new Response("<!doctype html><p>Synthetic page</p>", { status, headers: { "Content-Type": "text/html; charset=utf-8" } }); }
 function fixture() {
   const sqlite = new DatabaseSync(":memory:");
@@ -67,10 +67,31 @@ test("only successful public page HTML is counted, with private routes, bots, pr
   assert.equal(pageMetric(page(), new Response("{}", { headers: { "Content-Type": "application/json" } }), now), null);
   assert.equal(pageMetric(new Request(origin, { method: "POST" }), html(), now), null);
 });
+test("analytics requires the current category choice rather than a legacy or recording-only grant", () => {
+  for (const cookie of ["", "satinlore_measurement=on", "satinlore_replay=on", "satinlore_consent=v1.1.1", "satinlore_consent=v2.0.1", "satinlore_consent=v2.0.0"]) {
+    assert.equal(measurementAllowed(page("/", {Cookie: cookie})), false);
+    assert.equal(pageMetric(page("/", {Cookie: cookie}), html(), now), null);
+  }
+  assert.equal(measurementAllowed(page("/", {Cookie: "satinlore_consent=v2.1.0; satinlore_measurement=off"})), true, "A fresh explicit category choice supersedes the old compatibility preference.");
+});
 test("CTA input is bounded to the approved homepage actions and cannot become a data collection endpoint", () => {
   const body = { event: "cta_click", page: "/", surface: "hero", source: "instagram" };
   assert.equal(ctaMetric(page(), body, now)?.source, "instagram");
   for (const change of [{ page: "/manage" }, { event: "email_open" }, { surface: "private-email" }, { email: "reader@example.test" }, { source: "x".repeat(65) }]) assert.equal(ctaMetric(page(), { ...body, ...change }, now), null);
+});
+test("post-consent views accept only coarse homepage data and use the ordinary daily unique accounting", async t => {
+  const {sqlite, driver} = fixture(); t.after(() => sqlite.close());
+  const request = page("/api/metrics", {"CF-Connecting-IP": "192.0.2.10"});
+  const body = {event: "consent_page_view", page: "/", source: "x", referrer: "reddit"};
+  const metric = consentPageMetric(request, body, now)!;
+  assert.equal(metric.event, "page_view"); assert.equal(metric.source, "x"); assert.equal(metric.referrer, "reddit");
+  for (const change of [{page: "/privacy"}, {surface: "hero"}, {source: "private-campaign"}, {referrer: "https://reddit.com/private"}, {id: "private-id"}, {email: "private@example.test"}]) assert.equal(consentPageMetric(request, {...body, ...change}, now), null);
+  await recordConsentedPageView(driver, request, metric, "synthetic-salt", now);
+  const counts = sqlite.prepare("SELECT event,SUM(count) count FROM website_metrics GROUP BY event ORDER BY event").all();
+  assert.deepEqual(counts.map(row => [row.event, row.count]), [["page_view", 1], ["unique_page_view", 1], ["unique_visitor", 1]]);
+  const refused = page("/api/metrics", {Cookie: "satinlore_consent=v2.0.1", "CF-Connecting-IP": "192.0.2.10"});
+  await recordConsentedPageView(driver, refused, metric, "synthetic-salt", now + 1);
+  assert.equal(sqlite.prepare("SELECT SUM(count) count FROM website_metrics WHERE event='page_view'").get()?.count, 1);
 });
 test("counter upserts aggregate actions alongside short-lived daily dedupe codes and rate limits do not consume signup buckets", async t => {
   const { sqlite, driver } = fixture(); t.after(() => sqlite.close());
@@ -108,14 +129,14 @@ test("admin analytics reconcile retained activity and dedupe repeat waitlist ema
 });
 test("public counter endpoint rejects cross-origin and unexpected data, honors preferences, and fails quietly on database errors", async () => {
   const compiled = ts.transpileModule(readFileSync(new URL("../app/api/metrics/route.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  let writes = 0;
+  let writes = 0, pageWrites = 0;
   const exported: { POST?: (r: Request) => Promise<Response> } = {};
   new Function("require", "exports", compiled)((specifier: string) => {
-    if (specifier === "@/lib/site-analytics") return { ...analytics, analyticsRateLimit: async () => true, recordMetric: async () => { writes++; throw new Error("Synthetic database failure"); } };
+    if (specifier === "@/lib/site-analytics") return { ...analytics, analyticsRateLimit: async () => true, recordMetric: async () => { writes++; throw new Error("Synthetic database failure"); }, recordConsentedPageView: async () => {pageWrites++;} };
     if (specifier === "@/lib/waitlist-server") return { database: () => ({}), runtime: () => ({ ABUSE_SALT: "synthetic" }), response: (body: unknown, status = 200) => Response.json(body, { status }) };
     throw new Error("Unexpected dependency");
   }, exported);
-  const request = (body: unknown, headers: Record<string, string> = {}) => new Request(origin + "/api/metrics", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+  const request = (body: unknown, headers: Record<string, string> = {}) => new Request(origin + "/api/metrics", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json", Cookie: "satinlore_consent=v2.1.1", ...headers }, body: JSON.stringify(body) });
   const body = { event: "cta_click", page: "/", surface: "hero", source: "x" };
   assert.equal((await exported.POST!(request(body, { Origin: "https://foreign.example.test" }))).status, 400);
   assert.equal((await exported.POST!(request({ ...body, email: "private@example.test" }))).status, 400);
@@ -123,6 +144,10 @@ test("public counter endpoint rejects cross-origin and unexpected data, honors p
   assert.equal(writes, 0);
   assert.equal((await exported.POST!(request(body))).status, 204);
   assert.equal(writes, 1);
+  const view = {event: "consent_page_view", page: "/", source: "x", referrer: "reddit"};
+  assert.equal((await exported.POST!(request(view, {Cookie: ""}))).status, 204); assert.equal(pageWrites, 0);
+  assert.equal((await exported.POST!(request(view))).status, 204); assert.equal(pageWrites, 1);
+  assert.equal((await exported.POST!(request({...view, referrer: "https://reddit.com/private"}))).status, 400); assert.equal(pageWrites, 1);
   assert.equal((await exported.POST!(request({ ...body, source: "x".repeat(2000) }))).status, 400);
 });
 test("page HTTP responses stay available when the asynchronous analytics write fails", async () => {
