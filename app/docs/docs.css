@@ -1,0 +1,26 @@
+.reader-guides nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.25rem;
+  margin-block: 2rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--rose);
+  color: var(--plum);
+}
+
+.reader-guides nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.reader-guides ol {
+  list-style: decimal;
+  padding-inline-start: 1.5rem;
+}
+
+.reader-guides ol li {
+  padding-inline-start: .25rem;
+  margin-bottom: .5rem;
+}
