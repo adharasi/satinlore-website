@@ -267,9 +267,9 @@
 .landing-page .checkbox small{font-size:11px}
 .landing-page .submit-button{font-size:14px;padding:17px 14px}
 .landing-page .form-fineprint{font-size:11px}
-.landing-page .footer{grid-template-columns:1fr auto;gap:22px;padding-top:29px;padding-bottom:115px}
+.landing-page .footer{grid-template-columns:auto minmax(0,1fr);gap:22px;padding-top:29px;padding-bottom:115px}
 .landing-page .footer>p{display:none}
-.landing-page .footer nav{gap:17px;font-size:12px}
+.landing-page .footer nav{justify-content:flex-end;flex-wrap:wrap;gap:8px 17px;font-size:12px}
 .landing-page .footer small{font-size:10px}
 .landing-page .mobile-cta{display:block;position:fixed;bottom:0;left:0;right:0;z-index:29;background:#f8f5eef5;border-top:1px solid var(--line);padding:10px 18px calc(10px + env(safe-area-inset-bottom));backdrop-filter:blur(12px)}
 .landing-page .mobile-cta .button{width:100%;min-height:48px;font-size:13px;padding:13px 17px}
