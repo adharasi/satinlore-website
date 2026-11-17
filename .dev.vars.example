@@ -9,3 +9,7 @@ QUESTIONNAIRE_WEBHOOK_SECRET=
 # Add IAM credentials only when testing SES deliberately.
 SES_ACCESS_KEY_ID=
 SES_SECRET_ACCESS_KEY=
+
+# Launch homepage and paid-plan CTA. Enable only after checking the app.
+MARKETING_LAUNCH_ENABLED=false
+MARKETING_BILLING_ENABLED=false

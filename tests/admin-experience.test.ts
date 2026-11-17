@@ -12,8 +12,9 @@ test("experience dashboard and its masked preview deny unauthenticated rendering
     const exports: { default?: () => Promise<{ props: { title: string } }> } = {};
     new Function("require", "exports", source)((name: string) => {
       if (name === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
+      if (["@/lib/experience-layout.mjs", "@/lib/launch-marketing"].includes(name)) return {};
       if (name === "@/lib/waitlist-server") return { isOwner: async () => { checked++; return false; } };
-      if (["@/lib/PageFrame", "@/lib/AdminShell", "@/lib/AdminExperiencePanel", "@/lib/MarketingHome"].includes(name)) return { default: () => { throw new Error("Protected content must not render before authentication"); } };
+      if (["@/lib/PageFrame", "@/lib/AdminShell", "@/lib/AdminExperiencePanel", "@/lib/MarketingHome", "@/lib/LaunchHome"].includes(name)) return { default: () => { throw new Error("Protected content must not render before authentication"); } };
       throw new Error(`Unexpected dependency: ${name}`);
     }, exports);
     const result = await exports.default!();

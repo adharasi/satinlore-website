@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
 import { verifyAdminRequest } from "@/lib/admin-auth";
 
-type AppEnv = { QUESTIONNAIRE_WEBHOOK_SECRET?: string; SURVEY_EMAIL_ENABLED?: string; PUBLIC_SITE_ORIGIN?: string; DB?: D1Database; ADMIN_EMAIL?: string; ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string; ABUSE_SALT?: string; SES_ACCESS_KEY_ID?: string; SES_SECRET_ACCESS_KEY?: string; SES_SESSION_TOKEN?: string; SES_REGION?: string; SES_FROM_EMAIL?: string; SES_CONFIGURATION_SET?: string; EMAIL_ENABLED?: string; WELCOME_EMAIL_ENABLED?: string; FOUNDER_NOTIFICATION_EMAIL?: string };
+type AppEnv = { MARKETING_LAUNCH_ENABLED?: string; MARKETING_BILLING_ENABLED?: string; QUESTIONNAIRE_WEBHOOK_SECRET?: string; SURVEY_EMAIL_ENABLED?: string; PUBLIC_SITE_ORIGIN?: string; DB?: D1Database; ADMIN_EMAIL?: string; ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string; ABUSE_SALT?: string; SES_ACCESS_KEY_ID?: string; SES_SECRET_ACCESS_KEY?: string; SES_SESSION_TOKEN?: string; SES_REGION?: string; SES_FROM_EMAIL?: string; SES_CONFIGURATION_SET?: string; EMAIL_ENABLED?: string; WELCOME_EMAIL_ENABLED?: string; FOUNDER_NOTIFICATION_EMAIL?: string };
 export const runtime = () => env as unknown as AppEnv;
 export function database(): D1Database {
   const db = runtime().DB;

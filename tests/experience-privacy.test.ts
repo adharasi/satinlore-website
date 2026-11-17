@@ -6,6 +6,7 @@ import ts from "typescript";
 import type { ExperienceEnvironment, ExperienceEvent } from "../lib/experience-client";
 const { ExperienceRecorder, replayPermitted } = await import(new URL("../lib/experience-client.ts", import.meta.url).href);
 
+const layoutHelpers = await import(new URL("../lib/experience-layout.mjs", import.meta.url).href);
 const cookieHelpers = await import(new URL("../lib/cookie-consent.mjs", import.meta.url).href);
 const visualHelpers = await import(new URL("../lib/visual-replay-client.mjs", import.meta.url).href);
 const CONSENT = "satinlore_consent=v2.1.1; satinlore_replay=on";
@@ -81,7 +82,7 @@ function browserBinding({ cookie = "", path = "/", dnt = "", gpc = false, admiss
   const exports: { createBrowserExperienceRecorder?: () => InstanceType<typeof ExperienceRecorder> } = {};
   const source = ts.transpileModule(readFileSync(new URL("../lib/experience-client.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   vm.runInNewContext(source, { exports,
-    require: (name: string) => name === "./cookie-consent.mjs" ? cookieHelpers : name === "./visual-replay-client.mjs" ? {...visualHelpers, loadVisualRecord: async () => () => () => {}} : (() => {throw new Error("Unexpected import");})(),
+    require: (name: string) => name === "./experience-layout.mjs" ? layoutHelpers : name === "./cookie-consent.mjs" ? cookieHelpers : name === "./visual-replay-client.mjs" ? {...visualHelpers, loadVisualRecord: async () => () => () => {}} : (() => {throw new Error("Unexpected import");})(),
     window, document, navigator, location, Element, HTMLDetailsElement: Details,
     performance: { now: () => clock }, AbortSignal,
     setInterval: (callback: () => void) => { intervals.set(++nextTimer, callback); return nextTimer; }, clearInterval: (id: number) => intervals.delete(id),
@@ -207,8 +208,9 @@ test("new private experience pages deny access before rendering admin or preview
     const exports: { default?: () => Promise<{ props: { title: string } }> } = {};
     new Function("require", "exports", source)((name: string) => {
       if (name === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
+      if (["@/lib/experience-layout.mjs", "@/lib/launch-marketing"].includes(name)) return {};
       if (name === "@/lib/waitlist-server") return { isOwner: async () => { checks++; return false; } };
-      if (["@/lib/PageFrame", "@/lib/AdminShell", "@/lib/AdminExperiencePanel", "@/lib/MarketingHome"].includes(name)) return { default: () => { throw new Error("Protected content rendered without authentication"); } };
+      if (["@/lib/PageFrame", "@/lib/AdminShell", "@/lib/AdminExperiencePanel", "@/lib/MarketingHome", "@/lib/LaunchHome"].includes(name)) return { default: () => { throw new Error("Protected content rendered without authentication"); } };
       throw new Error(`Unreviewed page dependency ${name}`);
     }, exports);
     assert.equal((await exports.default!()).props.title, "Founder access only.");

@@ -1,12 +1,13 @@
 import {cookieCategoryAllowed, readCookieConsent, browserPrivacySignalOff} from "./cookie-consent.mjs";
+import {EXPERIENCE_SECTIONS, LEGACY_LAYOUT, validExperienceLayout, type ExperienceLayout} from "./experience-layout.mjs";
 import {loadVisualRecord, VisualReplayRecorder, VISUAL_FORMAT} from "./visual-replay-client.mjs";
 
 /** Optional public-page replay. Visual snapshots mask private regions before transport. */
-export const EXPERIENCE_LAYOUT = "landing-20261102";
+export const EXPERIENCE_LAYOUT = LEGACY_LAYOUT;
 export const REPLAY_COOKIE = "satinlore_replay";
 export const PRIVACY_EVENT = "satinlore:privacy-choice";
 export const OPEN_PRIVACY_EVENT = "satinlore:open-replay-choices";
-export const EXPERIENCE_SECTIONS = ["hero", "steps", "experience", "reading", "controls", "beta", "waitlist", "faq", "footer"] as const;
+export {EXPERIENCE_SECTIONS};
 type Section = typeof EXPERIENCE_SECTIONS[number];
 export type ExperienceViewport = {w: number; h: number; dh: number};
 export type ExperienceEvent = {t: number; k: "pointer" | "click"; x: number; y: number}
@@ -47,6 +48,7 @@ export function safeViewport(w: number, h: number, dh: number): ExperienceViewpo
 }
 
 export type ExperienceEnvironment = {
+  layout?: ExperienceLayout;
   allowed(): boolean;
   consentAllowed?(): boolean;
   now(): number;
@@ -108,7 +110,7 @@ export class ExperienceRecorder {
     const epoch = ++this.epoch;
     this.setState("starting");
     try {
-      const reply = await this.env.request({action: "start", v: this.env.visualFactory ? 2 : 1, ...(this.env.visualFactory ? {format: VISUAL_FORMAT} : {}), layout: EXPERIENCE_LAYOUT,
+      const reply = await this.env.request({action: "start", v: this.env.visualFactory ? 2 : 1, ...(this.env.visualFactory ? {format: VISUAL_FORMAT} : {}), layout: this.env.layout ?? EXPERIENCE_LAYOUT,
         viewport: this.env.viewport(), consent: true}) as SessionReply;
       if (!reply || reply.ok !== true || !UUID.test(reply.sid) || typeof reply.token !== "string" || !/^[a-f0-9]{32,128}$/i.test(reply.token)) throw new Error();
       const credentials = {sid: reply.sid, token: reply.token};
@@ -216,7 +218,9 @@ export function createBrowserExperienceRecorder(onState?: (state: ExperienceStat
     if (!response.ok) throw new Error("Optional replay is unavailable.");
     return response.json();
   };
+  const layout = document.querySelector<HTMLElement>("[data-experience-layout]")?.dataset.experienceLayout;
   return new ExperienceRecorder({
+    layout: validExperienceLayout(layout) ? layout : LEGACY_LAYOUT,
     allowed, consentAllowed, now: () => performance.now(), viewport, visible, onState, request,
     visualFactory: (credentials, offset, onFailure) => new VisualReplayRecorder({allowed, consentAllowed, visible, offset, request, assetOrigin: location.origin, loadRecord: loadVisualRecord, onFailure}, credentials),
     interval: (callback, ms) => setInterval(callback, ms), clearInterval: timer => clearInterval(timer as ReturnType<typeof setInterval>),

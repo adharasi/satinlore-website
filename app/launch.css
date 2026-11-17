@@ -1,0 +1,104 @@
+.launch-page {
+  color-scheme: dark;
+  --ink: #100c18;
+  --blackberry: #23172d;
+  --vellum: #f8efe5;
+  --orchid: #e1b8f2;
+  --rosewood: #ad5b77;
+  --muted: #c9bacd;
+  --line: #695a72;
+  --serif: "Instrument Serif", Baskervville, Georgia, serif;
+  --sans: "DM Sans", Inter, system-ui, sans-serif;
+  background: var(--ink);
+  color: var(--vellum);
+  font: 16px/1.55 var(--sans);
+}
+.launch-page {
+  *, *::before, *::after { box-sizing: border-box; }
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--orchid); outline-offset: 5px; }
+  h1, h2, h3, p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+  h1, h2, h3 { font: 400 2.25rem/1.02 var(--serif); text-wrap: balance; }
+  h2 { font-size: clamp(2.45rem, 5vw, 4.25rem); }
+  .wrap { width: min(1180px, calc(100% - 76px)); margin-inline: auto; }
+  .skip { position: absolute; z-index: 1; top: 10px; left: 10px; transform: translateY(-180%); background: var(--vellum); color: var(--ink); padding: .5rem; }
+  .skip:focus { transform: none; }
+  .topbar, .footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem 2rem; min-height: 75px; flex-wrap: wrap; }
+  .wordmark { text-decoration: none; font: 2rem/1 var(--serif); }
+  nav ul { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1.5rem; list-style: none; margin: 0; padding: 0; }
+  nav a, .login, footer a { text-decoration: none; color: var(--muted); }
+  nav a:hover, .login:hover, footer a:hover { color: var(--vellum); text-decoration: underline; }
+  .actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+  .button { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-height: 46px; border: 1px solid var(--muted); background: transparent; color: var(--vellum); border-radius: 100vw; padding: .55rem 1.2rem; font-size: .94rem; }
+  .button:hover { background-color: var(--blackberry); }
+  .primary { background: var(--vellum); border-color: var(--vellum); color: var(--ink); font-weight: 700; }
+  .primary:hover { background: var(--orchid); border-color: var(--orchid); }
+  .hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: linear-gradient(125deg, #17101c, #261b2c);
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, .65fr);
+    align-items: center;
+    gap: 2.5rem;
+    min-height: 545px;
+    padding: clamp(1.35rem, 5vw, 4.5rem);
+  }
+  .hero-photo { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero::before { content: ""; z-index: -1; position: absolute; inset: 0; background: linear-gradient(90deg, #130e19 0%, #110d17d6 29%, #110d174d 59%, #140c191a 82%); }
+  .hero h1 { font-size: clamp(4.1rem, 8.8vw, 7.5rem); letter-spacing: -.062em; }
+  .hero h1 em { color: var(--vellum); font-weight: 400; }
+  .hero-copy { font-size: 1.22rem; max-width: 33ch; margin-bottom: 1.7rem; }
+  .age { color: var(--muted); margin-top: 1rem; font-size: .9rem; }
+  .reader { width: min(100%, 19rem); justify-self: end; margin: 0; padding: 1.1rem; border: 1px solid #ae9186; border-radius: 25px; background: #120e18; box-shadow: 0 16px 45px #05030a99; }
+  .reader-name { font-size: 1.6rem; padding-bottom: .75rem; border-bottom: 1px solid var(--line); }
+  .passage { color: var(--vellum); font: 1.06rem/1.53 Georgia, serif; }
+  .passage mark { color: inherit; background: #523744; }
+  .trace { height: 3.2rem; display: flex; gap: .24rem; align-items: center; justify-content: center; margin: 1.1rem 0; }
+  .trace i { display: block; width: .36rem; border-radius: 20px; background: var(--orchid); }
+  .preview-controls { display: flex; gap: .5rem; margin-bottom: .9rem; }
+  .preview-controls span { flex: 1; text-align: center; color: var(--vellum); background: var(--blackberry); border: 1px solid var(--line); border-radius: 8px; padding: .35rem; }
+  .reader figcaption { color: var(--muted); font-size: .8rem; }
+  .section { padding-block: clamp(3.5rem, 9vw, 6rem); }
+  .section + .section, footer { border-top: 1px solid #43364c; }
+  .intro { max-width: 56ch; color: var(--muted); margin-bottom: 2rem; }
+  .steps, .guide-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  .steps li, .guide-list li, .plan { background: var(--blackberry); border: 1px solid #584863; border-radius: 12px; padding: 1.4rem; }
+  .steps li p, .guide-list li p, .faq p, .plan-note { color: var(--muted); }
+  .guide-list a { text-decoration-color: var(--orchid); text-underline-offset: 4px; }
+  .guide-list a:hover { color: var(--orchid); }
+  .two-col { display: grid; grid-template-columns: .85fr 1.15fr; gap: clamp(1.5rem, 5vw, 4rem); }
+  .guide-detail + .guide-detail { margin-top: 1.2rem; }
+  .guide-detail h3 { margin-bottom: .6rem; }
+  .guide-detail p { max-width: 62ch; color: var(--muted); }
+  .guide-detail { scroll-margin-top: 1.4rem; }
+  .faq details { border-bottom: 1px solid #54475c; padding: .8rem 0; }
+  .faq summary { cursor: pointer; font-weight: 650; }
+  .faq details p { padding: .55rem 1.1rem 0; }
+  .price { font-size: 1.25rem; }
+  .price strong { font: 3rem/1 var(--serif); }
+  .plan ul { margin: 1.4rem 0; padding-left: 1.25rem; color: var(--muted); }
+  footer { color: var(--muted); font-size: .9rem; }
+  .footer { justify-content: flex-start; }
+  .footer button { background: none; border: 0; color: var(--muted); padding: 0; font: inherit; text-decoration: underline; }
+  .footer .wordmark { margin-right: auto; }
+  @media (max-width: 780px) {
+    .wrap { width: min(1180px, calc(100% - 36px)); }
+    .topbar { padding-block: 1rem; }
+    .topbar nav { order: 3; width: 100%; }
+    .hero { grid-template-columns: 1fr; gap: 2rem; }
+    .hero-photo { object-position: 65% center; }
+    .reader { justify-self: start; }
+    .two-col, .steps, .guide-list { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 460px) {
+    .hero h1 { font-size: clamp(3.2rem, 12vw, 4.8rem); }
+    .hero h1 em { display: block; }
+    nav ul { gap: .5rem 1rem; }
+    .topbar { row-gap: .75rem; }
+  }
+}

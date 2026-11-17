@@ -1,8 +1,9 @@
+import { EXPERIENCE_SECTIONS, LEGACY_LAYOUT, LAUNCH_LAYOUT, LEGACY_SECTIONS, LAUNCH_SECTIONS, validExperienceLayout, type ExperienceLayout } from "./experience-layout.mjs";
 import { COOKIE_CONSENT_VERSION, cookieCategoryAllowed } from "./cookie-consent.mjs";
 import { validateVisualEvents, createVisualEventSanitizer, VISUAL_MAX_BATCH_BYTES, VISUAL_MAX_SESSION_BYTES, VISUAL_MAX_EVENTS } from "./visual-replay-codec.mjs";
 
 /** Consent-based first-party homepage replay; visual payloads are independently sanitised. */
-export const EXPERIENCE_LAYOUT = "landing-20261102";
+export const EXPERIENCE_LAYOUT = LEGACY_LAYOUT;
 export const EXPERIENCE_CONSENT_VERSION = COOKIE_CONSENT_VERSION;
 export const EXPERIENCE_VISUAL_FORMAT = "rrweb-v1";
 export const EXPERIENCE_VISUAL_BODY_BYTES = 327_680;
@@ -12,7 +13,7 @@ export const EXPERIENCE_VISUAL_MAX_EVENTS = VISUAL_MAX_EVENTS;
 // Visual payloads share D1 with the CRM. Expired-but-unpurged data stays charged.
 export const EXPERIENCE_VISUAL_GLOBAL_BYTES = 128 * 1024 * 1024;
 export const EXPERIENCE_VISUAL_BATCH_EVENTS = 128;
-export const EXPERIENCE_SECTIONS = ["hero", "steps", "experience", "reading", "controls", "beta", "waitlist", "faq", "footer"] as const;
+export { EXPERIENCE_SECTIONS };
 export const EXPERIENCE_RETENTION_DAYS = 30;
 export const EXPERIENCE_MAX_DURATION = 600_000;
 export const EXPERIENCE_MAX_EVENTS = 3_000;
@@ -116,14 +117,14 @@ export async function writeExperience(db: D1Database, request: Request, body: Re
   if (!experienceConsentAllowed(request)) throw new ExperienceError("Activity recording is not enabled for this browser.", 403);
   if (body.action === "start") {
     const visual = body.v === 2 && body.format === EXPERIENCE_VISUAL_FORMAT;
-    if (!exact(body, visual ? ["action", "v", "format", "layout", "viewport", "consent"] : ["action", "v", "layout", "viewport", "consent"]) || (!visual && body.v !== 1) || body.layout !== EXPERIENCE_LAYOUT || body.consent !== true) throw invalid();
+    if (!exact(body, visual ? ["action", "v", "format", "layout", "viewport", "consent"] : ["action", "v", "layout", "viewport", "consent"]) || (!visual && body.v !== 1) || !validExperienceLayout(body.layout) || body.consent !== true) throw invalid();
     const viewport = validateExperienceViewport(body.viewport);
     await experienceRate(db, request, salt, "start", now);
     const sid = crypto.randomUUID(), writeToken = token();
     const device = viewport.w <= 699 ? "mobile" : viewport.w <= 1099 ? "tablet" : "desktop";
     const expiresAt = now + EXPERIENCE_RETENTION_DAYS * DAY;
     await db.prepare("INSERT INTO website_experience_sessions(id,token_hash,page,layout,consent_version,consent_at,started_at,last_seen_at,expires_at,viewport_width,viewport_height,document_height,device,visual_format) VALUES(?,?, '/',?,?,?,?,?,?,?,?,?,?,?)")
-      .bind(sid, await digest(writeToken), EXPERIENCE_LAYOUT, EXPERIENCE_CONSENT_VERSION, now, now, now, expiresAt, viewport.w, viewport.h, viewport.dh, device, visual ? EXPERIENCE_VISUAL_FORMAT : null).run();
+      .bind(sid, await digest(writeToken), body.layout, EXPERIENCE_CONSENT_VERSION, now, now, now, expiresAt, viewport.w, viewport.h, viewport.dh, device, visual ? EXPERIENCE_VISUAL_FORMAT : null).run();
     return { ok: true, sid, token: writeToken, expiresAt, maxDurationMs: EXPERIENCE_MAX_DURATION, ...(visual ? { format: EXPERIENCE_VISUAL_FORMAT, maxVisualBytes: EXPERIENCE_VISUAL_MAX_BYTES, maxVisualEvents: EXPERIENCE_VISUAL_MAX_EVENTS, maxVisualBatchBytes: EXPERIENCE_VISUAL_BATCH_BYTES } : {}) };
   }
   if (body.action === "visual") return writeVisualExperience(db, request, body, salt, now);
@@ -228,7 +229,9 @@ async function writeVisualExperience(db: D1Database, request: Request, body: Rec
 export function experienceFilters(params: URLSearchParams) {
   const days = Number(params.get("days") || "7"); const device = params.get("device") || "all"; const page = Number(params.get("page") || "1");
   if (![7, 14, 30].includes(days) || !["all", "mobile", "tablet", "desktop"].includes(device) || !Number.isInteger(page) || page < 1 || page > 10000) throw new ExperienceError("Choose a valid date range, device and page.");
-  return { days, device, page };
+  const layout = params.get("layout");
+  if (layout !== null && !validExperienceLayout(layout)) throw new ExperienceError("Choose a valid homepage layout.");
+  return { days, device, page, ...(layout ? { layout } : {}) };
 }
 export async function readExperienceDetail(db: D1Database, id: string, now = Date.now()) {
   if (!validExperienceId(id)) throw invalid();
@@ -268,10 +271,10 @@ export async function deleteExperienceSession(db: D1Database, id: string) {
   await db.batch([db.prepare("DELETE FROM website_visual_batches WHERE session_id=?").bind(id), db.prepare("DELETE FROM website_experience_batches WHERE session_id=?").bind(id), db.prepare("DELETE FROM website_experience_sessions WHERE id=?").bind(id)]);
   return { deleted: !!found };
 }
-export async function readExperienceOverview(db: D1Database, filters = { days: 7, device: "all", page: 1 }, now = Date.now()): Promise<ExperienceOverview> {
-  const { days, device, page } = filters;
+export async function readExperienceOverview(db: D1Database, filters: { days: number; device: string; page: number; layout?: ExperienceLayout } = { days: 7, device: "all", page: 1 }, now = Date.now()): Promise<ExperienceOverview> {
+  const { days, device, page, layout = LEGACY_LAYOUT } = filters;
   const from = now - days * DAY, pageSize = 50, where = "started_at>=? AND expires_at>? AND layout=?" + (device === "all" ? "" : " AND device=?");
-  const args: (string | number)[] = [from, now, EXPERIENCE_LAYOUT, ...(device === "all" ? [] : [device])];
+  const args: (string | number)[] = [from, now, layout, ...(device === "all" ? [] : [device])];
   const totals = await db.prepare(`SELECT COUNT(*) sessions,COALESCE(SUM(clicks),0) clicks,COALESCE(SUM(visible_ms),0) visibleMs,COALESCE(AVG(duration_ms),0) averageDurationMs,COALESCE(AVG(max_scroll),0)/10.0 averageMaxScroll FROM website_experience_sessions WHERE ${where}`).bind(...args).first<ExperienceOverview["summary"]>();
   const summary = { sessions: Number(totals?.sessions || 0), clicks: Number(totals?.clicks || 0), visibleMs: Number(totals?.visibleMs || 0), averageDurationMs: Number(totals?.averageDurationMs || 0), averageMaxScroll: Number(totals?.averageMaxScroll || 0) };
   const rows = await db.prepare(`SELECT ${SESSION_COLUMNS} FROM website_experience_sessions WHERE ${where} ORDER BY started_at DESC,id LIMIT ? OFFSET ?`).bind(...args, pageSize, (page - 1) * pageSize).all<StoredSession>();
@@ -283,5 +286,5 @@ export async function readExperienceOverview(db: D1Database, filters = { days: 7
   const depthRows = await db.prepare(`WITH recent AS (SELECT id,max_scroll FROM website_experience_sessions WHERE ${where} ORDER BY started_at DESC,id LIMIT ${limit}) SELECT COUNT(*) sessions,SUM(CASE WHEN max_scroll>=250 THEN 1 ELSE 0 END) d25,SUM(CASE WHEN max_scroll>=500 THEN 1 ELSE 0 END) d50,SUM(CASE WHEN max_scroll>=750 THEN 1 ELSE 0 END) d75,SUM(CASE WHEN max_scroll>=1000 THEN 1 ELSE 0 END) d100 FROM recent`).bind(...args).first<{ sessions: number; d25: number; d50: number; d75: number; d100: number }>();
   const included = Number(depthRows?.sessions || 0);
   return { days, from, retentionDays: EXPERIENCE_RETENTION_DAYS, summary, sessions: rows.results.map(sessionView), total: summary.sessions, page, pageSize, hasMore: page * pageSize < summary.sessions,
-    heatmap: { layout: EXPERIENCE_LAYOUT, points: points.results, sections: EXPERIENCE_SECTIONS.map(key => ({ key, visits: Number(sectionMap.get(key)?.visits || 0), ms: Number(sectionMap.get(key)?.ms || 0) })), scroll: [{ depth: 0, sessions: included }, ...([25, 50, 75, 100] as const).map(depth => ({ depth, sessions: Number(depthRows?.[`d${depth}` as keyof NonNullable<typeof depthRows>] || 0) }))], coverage: { includedSessions: included, totalSessions: summary.sessions, limit } } };
+    heatmap: { layout, points: points.results, sections: (layout === LAUNCH_LAYOUT ? LAUNCH_SECTIONS : LEGACY_SECTIONS).map(key => ({ key, visits: Number(sectionMap.get(key)?.visits || 0), ms: Number(sectionMap.get(key)?.ms || 0) })), scroll: [{ depth: 0, sessions: included }, ...([25, 50, 75, 100] as const).map(depth => ({ depth, sessions: Number(depthRows?.[`d${depth}` as keyof NonNullable<typeof depthRows>] || 0) }))], coverage: { includedSessions: included, totalSessions: summary.sessions, limit } } };
 }

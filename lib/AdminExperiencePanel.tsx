@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ExperienceEvent, ExperienceSession } from "@/lib/website-experience";
+import { LAUNCH_LAYOUT, LEGACY_LAYOUT, type ExperienceLayout } from "@/lib/experience-layout.mjs";
 import { fitViewport, replayAtForm, replayState } from "@/lib/experience-view";
 import VisualReplay from "@/lib/VisualReplay";
 import type { VisualRecording } from "@/lib/visual-replay-view";
 import "./admin-experience.css";
 
-const LAYOUT = "landing-20261102";
-const sectionNames: Record<string, string> = { hero: "First impression", steps: "How it works", experience: "Story & rhythm", reading: "Reading pace", controls: "Personal controls", beta: "Beta programme", waitlist: "Waitlist", faq: "FAQs", footer: "Footer" };
+const sectionNames: Record<string, string> = { hero: "First impression", steps: "How it works", experience: "Story & rhythm", reading: "Reading pace", controls: "Personal controls", beta: "Beta programme", waitlist: "Waitlist", faq: "FAQs", footer: "Footer", guides: "Guides", pricing: "Pricing" };
 type Heatmap = {
   points: { x: number; y: number; clicks: number; moves: number }[];
   sections: { key: string; visits: number; ms: number }[];
@@ -38,7 +38,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 }
 
 /** Public, masked markup only. Sandbox prevents scripts and form submission. */
-function PagePreview({ width, height, fullPage = false, scroll = 0, expectedLayout = LAYOUT, events = [], at = 0, onGeometry, children }: {
+function PagePreview({ width, height, fullPage = false, scroll = 0, expectedLayout = LEGACY_LAYOUT, events = [], at = 0, onGeometry, children }: {
   width: number; height: number; fullPage?: boolean; scroll?: number; expectedLayout?: string;
   events?: ExperienceEvent[]; at?: number; onGeometry?: (value: PreviewGeometry | null) => void; children?: (geometry: PreviewGeometry, scale: number) => React.ReactNode;
 }) {
@@ -99,7 +99,7 @@ function PagePreview({ width, height, fullPage = false, scroll = 0, expectedLayo
     {frameError ? <p role="alert" className="experience-preview-error">{frameError}</p> : null}
     {mismatch && <p role="alert" className="experience-preview-error">This recording uses an older page layout. The overlay is hidden to avoid showing a misleading position.</p>}
     <div className="experience-preview-scroll"><div className="experience-preview-stage" style={{ width: fit.width, height: fit.height }}>
-      <iframe ref={frame} title={fullPage ? "Masked homepage heatmap preview" : "Masked homepage session replay"} src="/admin/experience/preview" sandbox="allow-same-origin" tabIndex={-1} inert aria-hidden="true" onLoad={measure} style={{ width, height: sourceHeight, transform: `scale(${fit.scale})` }} />
+      <iframe ref={frame} title={fullPage ? "Masked homepage heatmap preview" : "Masked homepage session replay"} src={expectedLayout === LAUNCH_LAYOUT ? "/admin/experience/preview?layout=" + LAUNCH_LAYOUT : "/admin/experience/preview"} sandbox="allow-same-origin" tabIndex={-1} inert aria-hidden="true" onLoad={measure} style={{ width, height: sourceHeight, transform: `scale(${fit.scale})` }} />
       {geometry && !mismatch && children?.(geometry, fit.scale)}
     </div></div>
   </div>;
@@ -182,7 +182,8 @@ function ReplayView({ detail }: { detail: Detail }) {
   </div>;
 }
 
-export default function AdminExperiencePanel() {
+export default function AdminExperiencePanel({ initialLayout = LEGACY_LAYOUT }: { initialLayout?: ExperienceLayout } = {}) {
+  const [layout, setLayout] = useState<ExperienceLayout>(initialLayout);
   const [days, setDays] = useState("7"), [device, setDevice] = useState("all"), [page, setPage] = useState(1);
   const [data, setData] = useState<Overview | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
   const [selected, setSelected] = useState<string | null>(null), [detail, setDetail] = useState<Detail | null>(null), [detailLoading, setDetailLoading] = useState(false), [detailError, setDetailError] = useState("");
@@ -191,14 +192,14 @@ export default function AdminExperiencePanel() {
   const load = useCallback(async () => {
     const next = ++sequence.current; setLoading(true); setError(""); setData(null);
     try {
-      const response = await fetch(`/api/admin/experience?${new URLSearchParams({ days, device, page: String(page) })}`, { cache: "no-store", headers: { "X-Requested-With": "XMLHttpRequest" } });
+      const response = await fetch(`/api/admin/experience?${new URLSearchParams({ days, device, page: String(page), layout })}`, { cache: "no-store", headers: { "X-Requested-With": "XMLHttpRequest" } });
       const result = await readResponse<Overview>(response);
       if (next === sequence.current) { setData(result); if (page > 1 && !result.sessions.length) setPage(Math.max(1, Math.ceil(result.total / result.pageSize))); }
     } catch (cause) { if (next === sequence.current) { setError(cause instanceof Error ? cause.message : "Could not load website activity."); setSelected(null); setDetail(null); } }
     finally { if (next === sequence.current) setLoading(false); }
-  }, [days, device, page]);
+  }, [days, device, page, layout]);
   useEffect(() => { void load(); return () => { sequence.current++; }; }, [load]);
-  useEffect(() => { setSelected(null); setDetail(null); setDetailError(""); }, [days, device]);
+  useEffect(() => { setSelected(null); setDetail(null); setDetailError(""); }, [days, device, layout]);
   useEffect(() => {
     const next = ++detailSequence.current;
     if (!selected) { setDetail(null); setDetailLoading(false); return; }
@@ -224,7 +225,7 @@ export default function AdminExperiencePanel() {
     finally { setDeleting(false); }
   }
   return <div className="experience-dashboard">
-    <div className="admin-toolbar"><div className="experience-filters"><label className="admin-field">Date range<select value={days} onChange={event => { setDays(event.target.value); setPage(1); }}><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option></select></label><label className="admin-field">Device<select value={device} onChange={event => { setDevice(event.target.value); setPage(1); }}><option value="all">All devices</option><option value="desktop">Desktop</option><option value="tablet">Tablet</option><option value="mobile">Mobile</option></select></label></div><button type="button" className="button" disabled={loading} onClick={() => void load()}>Refresh activity</button></div>
+    <div className="admin-toolbar"><div className="experience-filters"><label className="admin-field">Homepage<select value={layout} onChange={event => { setLayout(event.target.value === LAUNCH_LAYOUT ? LAUNCH_LAYOUT : LEGACY_LAYOUT); setPage(1); }}><option value={LAUNCH_LAYOUT}>After Hours</option><option value={LEGACY_LAYOUT}>Beta waitlist</option></select></label><label className="admin-field">Date range<select value={days} onChange={event => { setDays(event.target.value); setPage(1); }}><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option></select></label><label className="admin-field">Device<select value={device} onChange={event => { setDevice(event.target.value); setPage(1); }}><option value="all">All devices</option><option value="desktop">Desktop</option><option value="tablet">Tablet</option><option value="mobile">Mobile</option></select></label></div><button type="button" className="button" disabled={loading} onClick={() => void load()}>Refresh activity</button></div>
     {notice && <p className="experience-notice" role="status">{notice}</p>}
     {error && <div className="experience-error" role="alert"><p>{error}</p><button type="button" className="button" onClick={() => void load()}>Try again</button></div>}
     {loading && <p className="admin-empty" role="status">Loading shared website activity…</p>}

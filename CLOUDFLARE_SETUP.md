@@ -189,6 +189,8 @@ Only after this test should you process old queued entries with **Send waiting c
 
 ## 9. Connect automatic GitHub deployments
 
+For the revised public homepage, follow [Publish the After Hours homepage](docs/launch-homepage.md). Its two dashboard-owned marketing flags default off and are preserved by the Worker configuration.
+
 Once the first deployment works, open **Workers & Pages → satinlore-website → Settings → Builds → Connect** and connect `adharasi/satinlore-website`.
 
 Use:

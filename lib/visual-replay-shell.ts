@@ -1,6 +1,7 @@
 /** Empty, authenticated renderer document. Recorded DOM never enters the admin document. */
 export const VISUAL_REPLAY_ASSETS = [
   "https://satinlore.com/images/landing/analysis.webp",
+  "https://satinlore.com/images/landing/after-hours.webp",
   "https://satinlore.com/images/landing/reading.webp",
   "https://satinlore.com/images/landing/rhythms.webp",
   "https://satinlore.com/images/landing/controls.webp",

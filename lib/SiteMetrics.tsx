@@ -12,7 +12,7 @@ export function measurementDisabled() {
   return measurementBlockedForPage || browserPrivacySignalOff(navigator) || !cookieCategoryAllowed(document.cookie, "analytics");
 }
 
-/** Counts a public waitlist click, without delaying navigation or reading form fields. */
+/** Counts a public signup click, without delaying navigation or reading form fields. */
 export default function SiteMetrics() {
   useEffect(() => {
     if (window.location.pathname !== "/") return;
